@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElecCalc Pro — เครื่องคำนวณค่าทางไฟฟ้า</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0f1629;
+    --border: #1e2d50;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --text: #c8d8f0;
+    --text-dim: #5a7090;
+    --input-bg: #070d1a;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(255,107,53,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 2rem;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,212,255,0.6);
+    letter-spacing: 4px;
+  }
+
+  .logo span { color: var(--accent2); }
+
+  .tagline {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Nav Tabs */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 24px;
+    justify-content: center;
+  }
+
+  .tab-btn {
+    padding: 8px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    letter-spacing: 0.5px;
+  }
+
+  .tab-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  .tab-btn.active {
+    background: rgba(0,212,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  /* Calculator Panels */
+  .calc-panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .calc-panel.active { display: grid; gap: 20px; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent);
+  }
+
+  .card.orange::before { background: var(--accent2); }
+  .card.green::before { background: var(--accent3); }
+
+  .card-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card.orange .card-title { color: var(--accent2); }
+  .card.green .card-title { color: var(--accent3); }
+
+  .card-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .form-group .unit {
+    color: var(--accent);
+    font-size: 0.7rem;
+  }
+
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .form-group select option { background: var(--panel); }
+
+  .btn-calc {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    padding: 10px 28px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+
+  .btn-calc:hover {
+    background: rgba(0,212,255,0.15);
+    box-shadow: var(--glow);
+  }
+
+  .btn-calc.orange {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  .btn-calc.orange:hover {
+    background: rgba(255,107,53,0.15);
+    box-shadow: var(--glow2);
+  }
+
+  .btn-calc.green {
+    border-color: var(--accent3);
+    color: var(--accent3);
+  }
+
+  .results {
+    margin-top: 20px;
+    display: none;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .results.show { display: grid; }
+
+  .result-item {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .result-item.orange { border-left-color: var(--accent2); }
+  .result-item.green { border-left-color: var(--accent3); }
+
+  .result-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .result-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.4rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .result-item.orange .result-value { color: var(--accent2); }
+  .result-item.green .result-value { color: var(--accent3); }
+
+  .result-unit {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* Formula display */
+  .formula-bar {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    border-left: 3px solid var(--accent3);
+  }
+
+  /* Two column layout for some panels */
+  .panel-2col {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 700px) {
+    .panel-2col { grid-template-columns: 1fr; }
+    .logo { font-size: 1.4rem; }
+  }
+
+  /* Wire size table */
+  .wire-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    font-family: 'Share Tech Mono', monospace;
+    margin-top: 10px;
+  }
+
+  .wire-table th {
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    padding: 8px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+  }
+
+  .wire-table td {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .wire-table tr:nth-child(even) td { background: rgba(0,0,0,0.2); }
+  .wire-table tr.highlight td { background: rgba(57,255,20,0.08); color: var(--accent3); }
+
+  /* Status indicator */
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+    display: inline-block;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--accent3); }
+    50% { opacity: 0.4; box-shadow: none; }
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .error-msg {
+    color: #ff4466;
+    font-size: 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">ELEC<span>CALC</span> PRO</div>
+    <div class="tagline"><span class="status-dot"></span>เครื่องคำนวณค่าทางไฟฟ้า สำหรับวิศวกรและช่างไฟฟ้า</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('ohm')">กฎของโอห์ม</button>
+    <button class="tab-btn" onclick="showTab('power')">กำลังไฟฟ้า</button>
+    <button class="tab-btn" onclick="showTab('circuit')">วงจร R/L/C</button>
+    <button class="tab-btn" onclick="showTab('3phase')">ไฟ 3 เฟส</button>
+    <button class="tab-btn" onclick="showTab('wire')">ขนาดสาย</button>
+    <button class="tab-btn" onclick="showTab('conduit')">ท่อร้อยสาย</button>
+    <button class="tab-btn" onclick="showTab('xfmr')">หม้อแปลง</button>
+    <button class="tab-btn" onclick="showTab('vdrop')">Voltage Drop</button>
+  </div>
+
+  <!-- OHM'S LAW -->
+  <div id="tab-ohm" class="calc-panel active panel-2col">
+    <div class="card">
+      <div class="card-title">กฎของโอห์ม — Ohm's Law</div>
+      <div class="formula-bar">V = I × R &nbsp;|&nbsp; I = V / R &nbsp;|&nbsp; R = V / I</div>
+      <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:16px;">กรอก 2 ค่าเพื่อคำนวณค่าที่เหลือ (เว้นว่างค่าที่ต้องการ)</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>แรงดัน V <span class="unit">[โวลต์]</span></label>
+          <input type="number" id="ohm-v" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>กระแส I <span class="unit">[แอมแปร์]</span></label>
+          <input type="number" id="ohm-i" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>ความต้านทาน R <span class="unit">[โอห์ม]</span></label>
+          <input type="number" id="ohm-r" placeholder="—">
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calcOhm()">คำนวณ</button>
+      <div id="ohm-result" class="results"></div>
+      <div id="ohm-err" class="error-msg"></div>
+    </div>
+
+    <div class="card orange">
+      <div class="card-title">กำลังไฟฟ้า — Quick Power</div>
+      <div class="formula-bar">P = V × I &nbsp;|&nbsp; P = I² × R &nbsp;|&nbsp; P = V² / R</div>
+      <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:16px;">กรอก 2 ค่าเพื่อคำนวณกำลังไฟฟ้า</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>แรงดัน V <span class="unit">[V]</span></label>
+          <input type="number" id="qp-v" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>กระแส I <span class="unit">[A]</span></label>
+          <input type="number" id="qp-i" placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>ความต้านทาน R <span class="unit">[Ω]</span></label>
+          <input type="number" id="qp-r" placeholder="—">
+        </div>
+      </div>
+      <button class="btn-calc orange" onclick="calcQPower()">คำนวณ</button>
+      <div id="qp-result" class="results"></div>
+      <div id="qp-err" class="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- POWER -->
+  <div id="tab-power" class="calc-panel">
+    <div class="card">
+      <div class="card-title">กำลังไฟฟ้า AC — AC Power</div>
+      <div class="formula-bar">S = V × I &nbsp;|&nbsp; P = S × PF &nbsp;|&nbsp; Q = √(S² - P²)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>แรงดัน V <span class="unit">[V]</span></label>
+          <input type="number" id="pw-v" placeholder="220">
+        </div>
+        <div class="form-group">
+          <label>กระแส I <span class="unit">[A]</span></label>
+          <input type="number" id="pw-i" placeholder="10">
+        </div>
+        <div class="form-group">
+          <label>Power Factor (PF) <span class="unit">[0–1]</span></label>
+          <input type="number" id="pw-pf" placeholder="0.85" step="0.01" min="0" max="1">
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calcPower()">คำนวณ</button>
+      <div id="pw-result" class="results"></div>
+    </div>
+    <div class="card orange">
+      <div class="card-title">แปลงหน่วยกำลัง — Power Unit Converter</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ค่าที่ต้องการแปลง</label>
+          <input type="number" id="conv-val" placeholder="1000">
+        </div>
+        <div class="form-group">
+          <label>จากหน่วย</label>
+          <select id="conv-from">
+            <option value="W">วัตต์ (W)</option>
+            <option value="kW">กิโลวัตต์ (kW)</option>
+            <option value="MW">เมกะวัตต์ (MW)</option>
+            <option value="hp">แรงม้า (hp)</option>
+            <option value="kVA">กิโลโวลต์แอมแปร์ (kVA)</option>
+            <option value="BTU">BTU/hr</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-calc orange" onclick="calcConvert()">แปลงหน่วย</button>
+      <div id="conv-result" class="results"></div>
+    </div>
+  </div>
+
+  <!-- CIRCUIT -->
+  <div id="tab-circuit" class="calc-panel panel-2col">
+    <div class="card">
+      <div class="card-title">วงจรอนุกรม — Series Circuit</div>
+      <div class="formula-bar">R_total = R1 + R2 + R3</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>R1 <span class="unit">[Ω]</span></label>
+          <input type="number" id="sr1" placeholder="10">
+        </div>
+        <div class="form-group">
+          <label>R2 <span class="unit">[Ω]</span></label>
+          <input type="number" id="sr2" placeholder="20">
+        </div>
+        <div class="form-group">
+          <label>R3 <span class="unit">[Ω]</span></label>
+          <input type="number" id="sr3" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label>แรงดัน V <span class="unit">[V]</span></label>
+          <input type="number" id="sv" placeholder="220">
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calcSeries()">คำนวณ</button>
+      <div id="series-result" class="results"></div>
+    </div>
+    <div class="card orange">
+      <div class="card-title">วงจรขนาน — Parallel Circuit</div>
+      <div class="formula-bar">1/R_total = 1/R1 + 1/R2 + 1/R3</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>R1 <span class="unit">[Ω]</span></label>
+          <input type="number" id="pr1" placeholder="10">
+        </div>
+        <div class="form-group">
+          <label>R2 <span class="unit">[Ω]</span></label>
+          <input type="number" id="pr2" placeholder="20">
+        </div>
+        <div class="form-group">
+          <label>R3 <span class="unit">[Ω]</span></label>
+          <input type="number" id="pr3" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label>แรงดัน V <span class="unit">[V]</span></label>
+          <input type="number" id="pv" placeholder="220">
+        </div>
+      </div>
+      <button class="btn-calc orange" onclick="calcParallel()">คำนวณ</button>
+      <div id="parallel-result" class="results"></div>
+    </div>
+    <div class="card green" style="grid-column:1/-1">
+      <div class="card-title">วงจร RLC — Impedance</div>
+      <div class="formula-bar">Z = √(R² + (XL-XC)²) &nbsp;|&nbsp; XL = 2πfL &nbsp;|&nbsp; XC = 1/(2πfC)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ความต้านทาน R <span class="unit">[Ω]</span></label>
+          <input type="number" id="rlc-r" placeholder="10">
+        </div>
+        <div class="form-group">
+          <label>ตัวเหนี่ยวนำ L <span class="unit">[mH]</span></label>
+          <input type="number" id="rlc-l" placeholder="50">
+        </div>
+        <div class="form-group">
+          <label>ตัวเก็บประจุ C <span class="unit">[µF]</span></label>
+          <input type="number" id="rlc-c" placeholder="100">
+        </div>
+        <div class="form-group">
+          <label>ความถี่ f <span class="unit">[Hz]</span></label>
+          <input type="number" id="rlc-f" placeholder="50">
+        </div>
+      </div>
+      <button class="btn-calc green" onclick="calcRLC()">คำนวณ</button>
+      <div id="rlc-result" class="results"></div>
+    </div>
+  </div>
+
+  <!-- 3 PHASE -->
+  <div id="tab-3phase" class="calc-panel">
+    <div class="card">
+      <div class="card-title">ไฟฟ้า 3 เฟส — Three-Phase Power</div>
+      <div class="formula-bar">P = √3 × VL × IL × PF &nbsp;|&nbsp; S = √3 × VL × IL &nbsp;|&nbsp; VL = √3 × Vph</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>แรงดันสาย VL <span class="unit">[V]</span></label>
+          <input type="number" id="tp-vl" placeholder="380">
+        </div>
+        <div class="form-group">
+          <label>กระแสสาย IL <span class="unit">[A]</span></label>
+          <input type="number" id="tp-il" placeholder="50">
+        </div>
+        <div class="form-group">
+          <label>Power Factor <span class="unit">[0–1]</span></label>
+          <input type="number" id="tp-pf" placeholder="0.85" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>ประเภทการต่อ</label>
+          <select id="tp-type">
+            <option value="star">Star (Y)</option>
+            <option value="delta">Delta (Δ)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calc3Phase()">คำนวณ</button>
+      <div id="tp-result" class="results"></div>
+    </div>
+    <div class="card orange">
+      <div class="card-title">คำนวณกระแส 3 เฟส จาก kW</div>
+      <div class="formula-bar">IL = P / (√3 × VL × PF)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>กำลังไฟฟ้า P <span class="unit">[kW]</span></label>
+          <input type="number" id="fi-kw" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label>แรงดันสาย VL <span class="unit">[V]</span></label>
+          <input type="number" id="fi-vl" placeholder="380">
+        </div>
+        <div class="form-group">
+          <label>Power Factor <span class="unit">[0–1]</span></label>
+          <input type="number" id="fi-pf" placeholder="0.85" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Efficiency η <span class="unit">[0–1]</span></label>
+          <input type="number" id="fi-eff" placeholder="0.90" step="0.01">
+        </div>
+      </div>
+      <button class="btn-calc orange" onclick="calcFromKW()">คำนวณ</button>
+      <div id="fi-result" class="results"></div>
+    </div>
+  </div>
+
+  <!-- WIRE SIZE -->
+  <div id="tab-wire" class="calc-panel">
+    <div class="card green">
+      <div class="card-title">ขนาดสายไฟฟ้า — Wire Sizing (มอก./IEC)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>กระแสโหลด <span class="unit">[A]</span></label>
+          <input type="number" id="ws-current" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label>ประเภทสาย</label>
+          <select id="ws-type">
+            <option value="cu">ทองแดง (Cu)</option>
+            <option value="al">อลูมิเนียม (Al)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>การติดตั้ง</label>
+          <select id="ws-install">
+            <option value="conduit">ในท่อ/ช่องเดินสาย</option>
+            <option value="open">เดินเปิดในอากาศ</option>
+            <option value="direct">ฝังดินโดยตรง</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>อุณหภูมิโดยรอบ <span class="unit">[°C]</span></label>
+          <select id="ws-temp">
+            <option value="30">30°C</option>
+            <option value="35">35°C</option>
+            <option value="40">40°C</option>
+            <option value="45">45°C</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-calc green" onclick="calcWireSize()">แนะนำขนาดสาย</button>
+    </div>
+    <div class="card" id="wire-table-card" style="display:none">
+      <div class="card-title">ตารางขนาดสายแนะนำ</div>
+      <div id="wire-table-container"></div>
+    </div>
+  </div>
+
+  <!-- CONDUIT -->
+  <div id="tab-conduit" class="calc-panel">
+    <div class="card orange">
+      <div class="card-title">ขนาดท่อร้อยสาย — Conduit Fill</div>
+      <div class="formula-bar">Fill ≤ 40% (3+ สาย) | 31% (2 สาย) | 53% (1 สาย)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>จำนวนสาย <span class="unit">[เส้น]</span></label>
+          <input type="number" id="cf-num" placeholder="4" min="1">
+        </div>
+        <div class="form-group">
+          <label>ขนาดสาย <span class="unit">[mm²]</span></label>
+          <select id="cf-size">
+            <option value="1.5">1.5 mm²</option>
+            <option value="2.5">2.5 mm²</option>
+            <option value="4">4 mm²</option>
+            <option value="6">6 mm²</option>
+            <option value="10">10 mm²</option>
+            <option value="16">16 mm²</option>
+            <option value="25">25 mm²</option>
+            <option value="35">35 mm²</option>
+            <option value="50">50 mm²</option>
+            <option value="70">70 mm²</option>
+            <option value="95">95 mm²</option>
+            <option value="120">120 mm²</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ประเภทสายไฟ</label>
+          <select id="cf-wiretype">
+            <option value="THW">THW/IEC01 (ฉนวน PVC)</option>
+            <option value="THWN">THWN (ฉนวน Nylon)</option>
+            <option value="NYY">NYY (สายอ่อน)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-calc orange" onclick="calcConduit()">คำนวณ</button>
+      <div id="cf-result" class="results"></div>
+    </div>
+  </div>
+
+  <!-- TRANSFORMER -->
+  <div id="tab-xfmr" class="calc-panel panel-2col">
+    <div class="card">
+      <div class="card-title">หม้อแปลงไฟฟ้า — Transformer</div>
+      <div class="formula-bar">V1/V2 = N1/N2 = I2/I1</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>แรงดันปฐมภูมิ V1 <span class="unit">[V]</span></label>
+          <input type="number" id="xf-v1" placeholder="22000">
+        </div>
+        <div class="form-group">
+          <label>แรงดันทุติยภูมิ V2 <span class="unit">[V]</span></label>
+          <input type="number" id="xf-v2" placeholder="400">
+        </div>
+        <div class="form-group">
+          <label>พิกัด kVA <span class="unit">[kVA]</span></label>
+          <input type="number" id="xf-kva" placeholder="100">
+        </div>
+        <div class="form-group">
+          <label>Power Factor <span class="unit">[0–1]</span></label>
+          <input type="number" id="xf-pf" placeholder="0.85" step="0.01">
+        </div>
+      </div>
+      <button class="btn-calc" onclick="calcTransformer()">คำนวณ</button>
+      <div id="xf-result" class="results"></div>
+    </div>
+    <div class="card orange">
+      <div class="card-title">กระแสลัดวงจร — Short Circuit Current</div>
+      <div class="formula-bar">Isc = kVA × 1000 / (√3 × V × Z%/100)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>พิกัด kVA <span class="unit">[kVA]</span></label>
+          <input type="number" id="sc-kva" placeholder="100">
+        </div>
+        <div class="form-group">
+          <label>แรงดันทุติยภูมิ <span class="unit">[V]</span></label>
+          <input type="number" id="sc-v" placeholder="400">
+        </div>
+        <div class="form-group">
+          <label>%Impedance <span class="unit">[%]</span></label>
+          <input type="number" id="sc-z" placeholder="5" step="0.1">
+        </div>
+      </div>
+      <button class="btn-calc orange" onclick="calcShortCircuit()">คำนวณ</button>
+      <div id="sc-result" class="results"></div>
+    </div>
+  </div>
+
+  <!-- VOLTAGE DROP -->
+  <div id="tab-vdrop" class="calc-panel">
+    <div class="card green">
+      <div class="card-title">Voltage Drop — การตกของแรงดัน</div>
+      <div class="formula-bar">VD = (2 × I × L × ρ) / A &nbsp;|&nbsp; %VD = (VD/V) × 100</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>กระแส I <span class="unit">[A]</span></label>
+          <input type="number" id="vd-i" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label>ระยะทาง L <span class="unit">[เมตร]</span></label>
+          <input type="number" id="vd-l" placeholder="100">
+        </div>
+        <div class="form-group">
+          <label>พื้นที่หน้าตัดสาย A <span class="unit">[mm²]</span></label>
+          <select id="vd-a">
+            <option value="1.5">1.5</option>
+            <option value="2.5">2.5</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="10">10</option>
+            <option value="16">16</option>
+            <option value="25">25</option>
+            <option value="35">35</option>
+            <option value="50">50</option>
+            <option value="70">70</option>
+            <option value="95">95</option>
+            <option value="120">120</option>
+            <option value="150">150</option>
+            <option value="185">185</option>
+            <option value="240">240</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>วัสดุตัวนำ</label>
+          <select id="vd-mat">
+            <option value="0.0175">ทองแดง (ρ = 0.0175 Ω·mm²/m)</option>
+            <option value="0.028">อลูมิเนียม (ρ = 0.028 Ω·mm²/m)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>แรงดันระบบ <span class="unit">[V]</span></label>
+          <select id="vd-sys">
+            <option value="220">220V (1 เฟส)</option>
+            <option value="380">380V (3 เฟส)</option>
+            <option value="400">400V (3 เฟส)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ระบบ</label>
+          <select id="vd-phase">
+            <option value="1">1 เฟส (× 2)</option>
+            <option value="3">3 เฟส (× √3)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-calc green" onclick="calcVDrop()">คำนวณ</button>
+      <div id="vd-result" class="results"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---- TAB SWITCHING ----
+  function showTab(name) {
+    document.querySelectorAll('.calc-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function makeResult(items, cls='') {
+    return items.map(([label, value, unit]) =>
+      `<div class="result-item ${cls}">
+        <div class="result-label">${label}</div>
+        <div class="result-value">${value}</div>
+        <div class="result-unit">${unit}</div>
+      </div>`
+    ).join('');
+  }
+
+  function show(id, html, cls='') {
+    const el = document.getElementById(id);
+    el.innerHTML = html;
+    el.className = 'results show';
+  }
+
+  function fmt(n, d=4) {
+    if (Math.abs(n) >= 1000) return n.toFixed(2);
+    if (Math.abs(n) >= 100) return n.toFixed(3);
+    return parseFloat(n.toPrecision(d)).toString();
+  }
+
+  // ---- OHM'S LAW ----
+  function calcOhm() {
+    const v = parseFloat(document.getElementById('ohm-v').value);
+    const i = parseFloat(document.getElementById('ohm-i').value);
+    const r = parseFloat(document.getElementById('ohm-r').value);
+    const err = document.getElementById('ohm-err');
+    err.textContent = '';
+
+    let rv, ri, rr;
+    const has = (x) => !isNaN(x) && x !== null;
+
+    if (has(v) && has(i)) { rr = v/i; rv = v; ri = i; }
+    else if (has(v) && has(r)) { ri = v/r; rv = v; rr = r; }
+    else if (has(i) && has(r)) { rv = i*r; ri = i; rr = r; }
+    else { err.textContent = '⚠ กรุณากรอกค่าอย่างน้อย 2 ค่า'; return; }
+
+    show('ohm-result', makeResult([
+      ['แรงดัน', fmt(rv), 'โวลต์ (V)'],
+      ['กระแส', fmt(ri), 'แอมแปร์ (A)'],
+      ['ความต้านทาน', fmt(rr), 'โอห์ม (Ω)'],
+      ['กำลังไฟฟ้า', fmt(rv*ri), 'วัตต์ (W)'],
+    ]));
+  }
+
+  // ---- QUICK POWER ----
+  function calcQPower() {
+    const v = parseFloat(document.getElementById('qp-v').value);
+    const i = parseFloat(document.getElementById('qp-i').value);
+    const r = parseFloat(document.getElementById('qp-r').value);
+    const err = document.getElementById('qp-err');
+    err.textContent = '';
+
+    let P;
+    if (!isNaN(v) && !isNaN(i)) P = v * i;
+    else if (!isNaN(i) && !isNaN(r)) P = i * i * r;
+    else if (!isNaN(v) && !isNaN(r)) P = v * v / r;
+    else { err.textContent = '⚠ กรุณากรอกค่าอย่างน้อย 2 ค่า'; return; }
+
+    show('qp-result', makeResult([
+      ['กำลังไฟฟ้า P', fmt(P), 'วัตต์ (W)'],
+      ['กำลังไฟฟ้า', fmt(P/1000), 'กิโลวัตต์ (kW)'],
+    ], 'orange'));
+  }
+
+  // ---- AC POWER ----
+  function calcPower() {
+    const v = parseFloat(document.getElementById('pw-v').value) || 0;
+    const i = parseFloat(document.getElementById('pw-i').value) || 0;
+    const pf = parseFloat(document.getElementById('pw-pf').value) || 0.85;
+    const S = v * i;
+    const P = S * pf;
+    const Q = Math.sqrt(Math.max(0, S*S - P*P));
+    const angle = Math.acos(pf) * 180 / Math.PI;
+    show('pw-result', makeResult([
+      ['Apparent Power S', fmt(S), 'VA (โวลต์แอมแปร์)'],
+      ['Active Power P', fmt(P), 'W (วัตต์)'],
+      ['Reactive Power Q', fmt(Q), 'VAR'],
+      ['มุม φ', fmt(angle), 'องศา'],
+    ]));
+  }
+
+  // ---- UNIT CONVERTER ----
+  function calcConvert() {
+    const val = parseFloat(document.getElementById('conv-val').value) || 0;
+    const from = document.getElementById('conv-from').value;
+    // convert to Watts
+    const toW = { W:1, kW:1000, MW:1e6, hp:745.7, kVA:1000, BTU:0.29307 };
+    const W = val * toW[from];
+    show('conv-result', makeResult([
+      ['วัตต์', fmt(W), 'W'],
+      ['กิโลวัตต์', fmt(W/1000), 'kW'],
+      ['เมกะวัตต์', fmt(W/1e6), 'MW'],
+      ['แรงม้า', fmt(W/745.7), 'hp'],
+      ['kVA (PF=1)', fmt(W/1000), 'kVA'],
+      ['BTU/hr', fmt(W/0.29307), 'BTU/hr'],
+    ], 'orange'));
+  }
+
+  // ---- SERIES CIRCUIT ----
+  function calcSeries() {
+    const r1 = parseFloat(document.getElementById('sr1').value) || 0;
+    const r2 = parseFloat(document.getElementById('sr2').value) || 0;
+    const r3 = parseFloat(document.getElementById('sr3').value) || 0;
+    const v = parseFloat(document.getElementById('sv').value) || 0;
+    const rt = r1 + r2 + r3;
+    const i = rt > 0 ? v / rt : 0;
+    show('series-result', makeResult([
+      ['R รวม', fmt(rt), 'Ω'],
+      ['กระแส I', fmt(i), 'A'],
+      ['แรงดันที่ R1', fmt(i*r1), 'V'],
+      ['แรงดันที่ R2', fmt(i*r2), 'V'],
+      ['แรงดันที่ R3', fmt(i*r3), 'V'],
+      ['กำลัง P รวม', fmt(i*i*rt), 'W'],
+    ]));
+  }
+
+  // ---- PARALLEL CIRCUIT ----
+  function calcParallel() {
+    const r1 = parseFloat(document.getElementById('pr1').value) || Infinity;
+    const r2 = parseFloat(document.getElementById('pr2').value) || Infinity;
+    const r3 = parseFloat(document.getElementById('pr3').value) || Infinity;
+    const v = parseFloat(document.getElementById('pv').value) || 0;
+    const rt = 1 / (1/r1 + 1/r2 + 1/r3);
+    const it = v / rt;
+    show('parallel-result', makeResult([
+      ['R รวม', fmt(rt), 'Ω'],
+      ['กระแสรวม I', fmt(it), 'A'],
+      ['I ผ่าน R1', fmt(v/r1), 'A'],
+      ['I ผ่าน R2', fmt(v/r2), 'A'],
+      ['I ผ่าน R3', fmt(v/r3), 'A'],
+    ], 'orange'));
+  }
+
+  // ---- RLC ----
+  function calcRLC() {
+    const R = parseFloat(document.getElementById('rlc-r').value) || 0;
+    const L = (parseFloat(document.getElementById('rlc-l').value) || 0) * 0.001;
+    const C = (parseFloat(document.getElementById('rlc-c').value) || 0) * 1e-6;
+    const f = parseFloat(document.getElementById('rlc-f').value) || 50;
+    const XL = 2 * Math.PI * f * L;
+    const XC = C > 0 ? 1 / (2 * Math.PI * f * C) : 0;
+    const Z = Math.sqrt(R*R + (XL-XC)**2);
+    const fr = L > 0 && C > 0 ? 1 / (2 * Math.PI * Math.sqrt(L * C)) : 0;
+    const phi = Math.atan2(XL - XC, R) * 180 / Math.PI;
+    show('rlc-result', makeResult([
+      ['XL (Inductive)', fmt(XL), 'Ω'],
+      ['XC (Capacitive)', fmt(XC), 'Ω'],
+      ['Impedance Z', fmt(Z), 'Ω'],
+      ['มุม φ', fmt(phi), '°'],
+      ['Resonance Freq', fmt(fr), 'Hz'],
+    ], 'green'));
+  }
+
+  // ---- 3 PHASE ----
+  function calc3Phase() {
+    const VL = parseFloat(document.getElementById('tp-vl').value) || 380;
+    const IL = parseFloat(document.getElementById('tp-il').value) || 0;
+    const PF = parseFloat(document.getElementById('tp-pf').value) || 0.85;
+    const type = document.getElementById('tp-type').value;
+    const S = Math.sqrt(3) * VL * IL;
+    const P = S * PF;
+    const Q = Math.sqrt(Math.max(0, S*S - P*P));
+    const Vph = type === 'star' ? VL / Math.sqrt(3) : VL;
+    const Iph = type === 'star' ? IL : IL / Math.sqrt(3);
+    show('tp-result', makeResult([
+      ['Apparent Power S', fmt(S/1000), 'kVA'],
+      ['Active Power P', fmt(P/1000), 'kW'],
+      ['Reactive Power Q', fmt(Q/1000), 'kVAR'],
+      ['แรงดัน Phase', fmt(Vph), 'V'],
+      ['กระแส Phase', fmt(Iph), 'A'],
+    ]));
+  }
+
+  function calcFromKW() {
+    const kW = parseFloat(document.getElementById('fi-kw').value) || 0;
+    const VL = parseFloat(document.getElementById('fi-vl').value) || 380;
+    const PF = parseFloat(document.getElementById('fi-pf').value) || 0.85;
+    const eff = parseFloat(document.getElementById('fi-eff').value) || 0.9;
+    const IL = (kW * 1000) / (Math.sqrt(3) * VL * PF * eff);
+    const S = Math.sqrt(3) * VL * IL;
+    show('fi-result', makeResult([
+      ['กระแสสาย IL', fmt(IL), 'A (แอมแปร์)'],
+      ['Apparent Power S', fmt(S/1000), 'kVA'],
+      ['Input Power', fmt(kW/eff), 'kW'],
+    ], 'orange'));
+  }
+
+  // ---- WIRE SIZE ----
+  const wireData = {
+    cu: {
+      conduit: [
+        [1.5,15],[2.5,20],[4,27],[6,34],[10,46],[16,61],[25,80],[35,99],
+        [50,119],[70,151],[95,182],[120,210],[150,240],[185,273],[240,320]
+      ],
+      open: [
+        [1.5,19],[2.5,26],[4,35],[6,45],[10,61],[16,81],[25,106],[35,131],
+        [50,158],[70,200],[95,241],[120,278],[150,318],[185,362],[240,424]
+      ],
+      direct: [
+        [1.5,22],[2.5,29],[4,38],[6,47],[10,63],[16,84],[25,110],[35,136],
+        [50,164],[70,208],[95,252],[120,291],[150,335],[185,381],[240,447]
+      ]
+    },
+    al: {
+      conduit: [
+        [16,48],[25,63],[35,77],[50,93],[70,118],[95,143],[120,165],
+        [150,188],[185,213],[240,250]
+      ],
+      open: [
+        [16,62],[25,82],[35,101],[50,121],[70,154],[95,185],[120,213],
+        [150,244],[185,278],[240,326]
+      ],
+      direct: [
+        [16,64],[25,85],[35,105],[50,126],[70,160],[95,193],[120,223],
+        [150,257],[185,292],[240,343]
+      ]
+    }
+  };
+
+  // Temp correction factors (base 30°C)
+  const tempCorr = { 30:1.0, 35:0.94, 40:0.87, 45:0.79 };
+
+  function calcWireSize() {
+    const curr = parseFloat(document.getElementById('ws-current').value) || 0;
+    const type = document.getElementById('ws-type').value;
+    const install = document.getElementById('ws-install').value;
+    const temp = parseInt(document.getElementById('ws-temp').value);
+    const cf = tempCorr[temp] || 1.0;
+    const adjCurr = curr / cf;
+
+    const table = wireData[type][install];
+    document.getElementById('wire-table-card').style.display = 'block';
+
+    let html = `<p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:12px;">กระแสที่ต้องการ: ${curr}A | หลังปรับอุณหภูมิ (${temp}°C, CF=${cf}): <span style="color:var(--accent3)">${adjCurr.toFixed(1)}A</span></p>`;
+    html += `<table class="wire-table"><tr><th>ขนาดสาย (mm²)</th><th>พิกัดกระแส (A)</th><th>หลังปรับ (A)</th><th>สถานะ</th></tr>`;
+
+    let firstOk = true;
+    table.forEach(([size, Iz]) => {
+      const adjIz = Iz * cf;
+      const ok = adjIz >= curr;
+      const cls = ok && firstOk ? 'highlight' : '';
+      if (ok && firstOk) firstOk = false;
+      const status = adjIz >= curr ? (cls ? '✓ แนะนำ' : '✓ ผ่าน') : '✗ ไม่เพียงพอ';
+      html += `<tr class="${cls}"><td>${size}</td><td>${Iz}</td><td>${adjIz.toFixed(1)}</td><td>${status}</td></tr>`;
+    });
+    html += '</table>';
+    document.getElementById('wire-table-container').innerHTML = html;
+  }
+
+  // ---- CONDUIT FILL ----
+  const wireDiameter = {
+    'THW':  { 1.5:10.4, 2.5:11.6, 4:12.8, 6:14.3, 10:16.6, 16:19.1, 25:22.0, 35:24.7, 50:28.0, 70:31.8, 95:35.7, 120:39.3 },
+    'THWN': { 1.5:9.9,  2.5:10.8, 4:12.0, 6:13.5, 10:15.9, 16:18.4, 25:21.3, 35:23.8, 50:27.1, 70:30.7, 95:34.6, 120:38.2 },
+    'NYY':  { 1.5:11.0, 2.5:12.5, 4:14.0, 6:15.5, 10:17.5, 16:20.5, 25:23.5, 35:26.0, 50:29.0, 70:33.5, 95:37.0, 120:41.0 }
+  };
+
+  const conduitSizes = [16,20,25,32,40,50,63,75,100,125,150];
+
+  function calcConduit() {
+    const num = parseInt(document.getElementById('cf-num').value) || 1;
+    const size = document.getElementById('cf-size').value;
+    const wt = document.getElementById('cf-wiretype').value;
+    const d = wireDiameter[wt][size] || 15;
+    const wireArea = Math.PI * (d/2) ** 2;
+    const totalWireArea = wireArea * num;
+    const fillLimit = num === 1 ? 0.53 : num === 2 ? 0.31 : 0.40;
+
+    const reqArea = totalWireArea / fillLimit;
+    let recommended = null;
+    conduitSizes.forEach(cs => {
+      const ca = Math.PI * (cs/2) ** 2;
+      if (!recommended && ca >= reqArea) recommended = cs;
+    });
+
+    const res = [];
+    conduitSizes.forEach(cs => {
+      const ca = Math.PI * (cs/2) ** 2;
+      const fill = (totalWireArea / ca * 100).toFixed(1);
+      if (cs === recommended) {
+        res.push(['ท่อแนะนำ', `Ø${cs} mm`, `Fill = ${fill}%`]);
+      }
+    });
+
+    show('cf-result', makeResult([
+      ['พื้นที่สายรวม', fmt(totalWireArea), 'mm²'],
+      ['Fill Limit', (fillLimit*100).toFixed(0), '%'],
+      ['พื้นที่ท่อขั้นต่ำ', fmt(reqArea), 'mm²'],
+      ['ขนาดท่อแนะนำ', recommended ? `Ø${recommended} mm` : '>150mm', 'Rigid/IMC/EMT'],
+    ], 'orange'));
+  }
+
+  // ---- TRANSFORMER ----
+  function calcTransformer() {
+    const V1 = parseFloat(document.getElementById('xf-v1').value) || 0;
+    const V2 = parseFloat(document.getElementById('xf-v2').value) || 0;
+    const kVA = parseFloat(document.getElementById('xf-kva').value) || 0;
+    const PF = parseFloat(document.getElementById('xf-pf').value) || 0.85;
+    const ratio = V1 / V2;
+    const I1 = (kVA * 1000) / (Math.sqrt(3) * V1);
+    const I2 = (kVA * 1000) / (Math.sqrt(3) * V2);
+    const kW = kVA * PF;
+    show('xf-result', makeResult([
+      ['อัตราส่วนการแปลง', fmt(ratio), ':1'],
+      ['กระแสปฐมภูมิ I1', fmt(I1), 'A'],
+      ['กระแสทุติยภูมิ I2', fmt(I2), 'A'],
+      ['กำลังไฟฟ้า', fmt(kW), 'kW'],
+    ]));
+  }
+
+  function calcShortCircuit() {
+    const kVA = parseFloat(document.getElementById('sc-kva').value) || 0;
+    const V = parseFloat(document.getElementById('sc-v').value) || 400;
+    const Z = parseFloat(document.getElementById('sc-z').value) || 5;
+    const Isc = (kVA * 1000) / (Math.sqrt(3) * V * (Z / 100));
+    const Ifl = (kVA * 1000) / (Math.sqrt(3) * V);
+    show('sc-result', makeResult([
+      ['กระแสพิกัดเต็มโหลด', fmt(Ifl), 'A'],
+      ['กระแสลัดวงจร Isc', fmt(Isc), 'A'],
+      ['กระแสลัดวงจร Isc', fmt(Isc/1000), 'kA'],
+    ], 'orange'));
+  }
+
+  // ---- VOLTAGE DROP ----
+  function calcVDrop() {
+    const I = parseFloat(document.getElementById('vd-i').value) || 0;
+    const L = parseFloat(document.getElementById('vd-l').value) || 0;
+    const A = parseFloat(document.getElementById('vd-a').value) || 1;
+    const rho = parseFloat(document.getElementById('vd-mat').value);
+    const V = parseFloat(document.getElementById('vd-sys').value);
+    const phase = parseInt(document.getElementById('vd-phase').value);
+
+    let VD;
+    if (phase === 1) {
+      VD = (2 * I * L * rho) / A;
+    } else {
+      VD = (Math.sqrt(3) * I * L * rho) / A;
+    }
+    const pctVD = (VD / V) * 100;
+    const Vend = V - VD;
+    const status = pctVD <= 3 ? '✓ ผ่าน (≤3%)' : pctVD <= 5 ? '⚠ ยอมรับได้ (≤5%)' : '✗ เกินมาตรฐาน (>5%)';
+
+    show('vd-result', makeResult([
+      ['Voltage Drop', fmt(VD), 'โวลต์ (V)'],
+      ['%Voltage Drop', fmt(pctVD), '%'],
+      ['แรงดันปลายสาย', fmt(Vend), 'V'],
+      ['สถานะ', status, pctVD <= 5 ? 'ตามมาตรฐาน IEC/กฟน.' : 'ต้องปรับขนาดสาย'],
+    ], 'green'));
+  }
+</script>
+</body>
+</html>
