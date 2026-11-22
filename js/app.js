@@ -1035,7 +1035,7 @@ async function boot() {
     paint();
     window.addEventListener("hashchange", () => paint());
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register(new URL("../sw.js", import.meta.url)).catch(() => {});
+      navigator.serviceWorker.register(new URL("../sw.js", import.meta.url), { updateViaCache: "none" }).catch(() => {});
     }
   } catch (error) {
     app.innerHTML = `<p class="error wrap">โหลดตารางมาตรฐานไม่สำเร็จ (${esc(error.message)}) ลองรีเฟรชหน้าอีกครั้ง</p>`;
