@@ -1,390 +1,186 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" style="color-scheme: light; background: #fff">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ElecCalc Pro — เครื่องคำนวณค่าทางไฟฟ้า</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e1a;
-    --panel: #0f1629;
-    --border: #1e2d50;
-    --accent: #00d4ff;
-    --accent2: #ff6b35;
-    --accent3: #39ff14;
-    --text: #c8d8f0;
-    --text-dim: #5a7090;
-    --input-bg: #070d1a;
-    --glow: 0 0 20px rgba(0,212,255,0.3);
-    --glow2: 0 0 20px rgba(255,107,53,0.3);
+    color-scheme: light;
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --border: #e6eaee;
+    --accent: #0e6b63;
+    --accent2: #0e6b63;
+    --accent3: #0e6b63;
+    --text: #1a1f24;
+    --text-dim: #5c6770;
+    --input-bg: #ffffff;
+    --well: #f4f7f8;
+    --shadow: 0 10px 30px rgba(20, 32, 40, 0.06);
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
+  html, body {
+    background: #ffffff;
     color: var(--text);
-    font-family: 'Sarabun', sans-serif;
+    font-family: "Sarabun", "Noto Sans Thai", sans-serif;
     min-height: 100vh;
-    overflow-x: hidden;
+    color-scheme: light;
   }
-
-  /* Grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Header */
-  header {
+  body::before { display: none; }
+  .crumb {
+    background: #ffffff;
+    color: var(--text-dim);
+    padding: 14px 16px;
     text-align: center;
-    padding: 30px 0 20px;
+    font-size: 0.95rem;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 28px;
-    position: relative;
   }
-
-  header::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 200px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  }
-
+  .crumb a { color: var(--accent); text-decoration: none; font-weight: 700; }
+  .container { max-width: 1040px; margin: 0 auto; padding: 28px 16px 56px; }
+  header { text-align: left; padding: 8px 0 8px; border: 0; margin-bottom: 18px; }
+  header::after { display: none; }
   .logo {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 2rem;
-    color: var(--accent);
-    text-shadow: 0 0 30px rgba(0,212,255,0.6);
-    letter-spacing: 4px;
+    font-family: "Sarabun", sans-serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0;
+    text-shadow: none;
+    line-height: 1.2;
   }
-
-  .logo span { color: var(--accent2); }
-
-  .tagline {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    margin-top: 6px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  /* Nav Tabs */
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 24px;
-    justify-content: center;
-  }
-
+  .logo span { color: var(--accent); }
+  .tagline { font-size: 1rem; color: var(--text-dim); margin-top: 6px; letter-spacing: 0; text-transform: none; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 8px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 22px; }
   .tab-btn {
-    padding: 8px 16px;
-    background: var(--panel);
+    min-height: 44px;
+    padding: 10px 14px;
+    background: #fff;
     border: 1px solid var(--border);
-    color: var(--text-dim);
-    font-family: 'Sarabun', sans-serif;
-    font-size: 0.82rem;
+    border-radius: 999px;
+    color: var(--text);
+    font-family: "Sarabun", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
-    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
-    letter-spacing: 0.5px;
+    clip-path: none;
+    letter-spacing: 0;
   }
-
-  .tab-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,212,255,0.05);
-  }
-
-  .tab-btn.active {
-    background: rgba(0,212,255,0.1);
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: var(--glow);
-  }
-
-  /* Calculator Panels */
-  .calc-panel {
-    display: none;
-    animation: fadeIn 0.3s ease;
-  }
-
-  .calc-panel.active { display: grid; gap: 20px; }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
+  .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: none; }
+  .calc-panel { display: none; }
+  .calc-panel.active { display: grid; gap: 16px; }
+  .panel-2col { grid-template-columns: 1fr; }
+  @media (min-width: 800px) { .panel-2col { grid-template-columns: 1fr 1fr; } .logo { font-size: 2.15rem; } }
   .card {
-    background: var(--panel);
+    background: #fff;
     border: 1px solid var(--border);
-    padding: 24px;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: var(--shadow);
     position: relative;
-    overflow: hidden;
   }
-
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 3px;
-    height: 100%;
-    background: var(--accent);
-  }
-
-  .card.orange::before { background: var(--accent2); }
-  .card.green::before { background: var(--accent3); }
-
+  .card::before { display: none; }
   .card-title {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--accent);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    font-family: "Sarabun", sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0;
+    text-transform: none;
+    margin-bottom: 14px;
+    display: block;
   }
-
-  .card.orange .card-title { color: var(--accent2); }
-  .card.green .card-title { color: var(--accent3); }
-
-  .card-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
+  .card-title::after { display: none; }
+  .card.orange .card-title, .card.green .card-title { color: var(--text); }
+  .formula-bar {
+    background: var(--well);
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    font-family: "Sarabun", sans-serif;
+    font-size: 0.92rem;
+    color: var(--text-dim);
   }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-
+  .form-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 16px; }
+  @media (min-width: 640px) { .form-grid { grid-template-columns: 1fr 1fr; } }
   .form-group label {
     display: block;
-    font-size: 0.75rem;
-    color: var(--text-dim);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
     margin-bottom: 6px;
-    font-family: 'Share Tech Mono', monospace;
-    letter-spacing: 1px;
+    font-family: "Sarabun", sans-serif;
+    letter-spacing: 0;
   }
-
-  .form-group .unit {
-    color: var(--accent);
-    font-size: 0.7rem;
-  }
-
+  .form-group .unit { color: var(--accent); font-size: 0.85rem; font-weight: 600; }
   .form-group input, .form-group select {
     width: 100%;
-    background: var(--input-bg);
+    background: #fff;
     border: 1px solid var(--border);
+    border-radius: 12px;
     color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 1rem;
-    padding: 10px 12px;
+    font-family: "Sarabun", sans-serif;
+    font-size: 1.05rem;
+    padding: 12px 14px;
+    min-height: 48px;
     outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
   }
-
   .form-group input:focus, .form-group select:focus {
     border-color: var(--accent);
-    box-shadow: var(--glow);
+    box-shadow: 0 0 0 3px rgba(14, 107, 99, 0.18);
   }
-
-  .form-group select option { background: var(--panel); }
-
-  .btn-calc {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.9rem;
-    padding: 10px 28px;
+  .form-group select option { background: #fff; color: var(--text); }
+  .btn-calc, .btn-calc.orange, .btn-calc.green {
+    background: var(--accent);
+    border: 0;
+    color: #fff;
+    font-family: "Sarabun", sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 18px;
+    min-height: 48px;
+    border-radius: 14px;
     cursor: pointer;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    transition: all 0.2s;
-    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    letter-spacing: 0;
+    text-transform: none;
+    clip-path: none;
   }
-
-  .btn-calc:hover {
-    background: rgba(0,212,255,0.15);
-    box-shadow: var(--glow);
-  }
-
-  .btn-calc.orange {
-    border-color: var(--accent2);
-    color: var(--accent2);
-  }
-
-  .btn-calc.orange:hover {
-    background: rgba(255,107,53,0.15);
-    box-shadow: var(--glow2);
-  }
-
-  .btn-calc.green {
-    border-color: var(--accent3);
-    color: var(--accent3);
-  }
-
-  .results {
-    margin-top: 20px;
-    display: none;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-    animation: fadeIn 0.3s ease;
-  }
-
+  .btn-calc:hover, .btn-calc.orange:hover, .btn-calc.green:hover { background: #0b5a53; box-shadow: none; }
+  .results { margin-top: 16px; display: none; grid-template-columns: 1fr 1fr; gap: 10px; }
   .results.show { display: grid; }
-
-  .result-item {
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    padding: 14px 16px;
-    border-left: 3px solid var(--accent);
+  .result-item, .result-item.orange, .result-item.green {
+    background: var(--well);
+    border: 0;
+    border-radius: 14px;
+    padding: 12px 14px;
   }
-
-  .result-item.orange { border-left-color: var(--accent2); }
-  .result-item.green { border-left-color: var(--accent3); }
-
-  .result-label {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    font-family: 'Share Tech Mono', monospace;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-  }
-
-  .result-value {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 1.4rem;
+  .result-label { font-size: 0.82rem; color: var(--text-dim); font-family: "Sarabun", sans-serif; letter-spacing: 0; text-transform: none; margin-bottom: 4px; }
+  .result-value, .result-item.orange .result-value, .result-item.green .result-value {
+    font-family: "Sarabun", sans-serif;
+    font-size: 1.55rem;
+    font-weight: 700;
     color: var(--accent);
-    line-height: 1;
+    line-height: 1.15;
   }
-
-  .result-item.orange .result-value { color: var(--accent2); }
-  .result-item.green .result-value { color: var(--accent3); }
-
-  .result-unit {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    margin-top: 2px;
-    font-family: 'Share Tech Mono', monospace;
-  }
-
-  /* Formula display */
-  .formula-bar {
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    border-left: 3px solid var(--accent3);
-  }
-
-  /* Two column layout for some panels */
-  .panel-2col {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  @media (max-width: 700px) {
-    .panel-2col { grid-template-columns: 1fr; }
-    .logo { font-size: 1.4rem; }
-  }
-
-  /* Wire size table */
-  .wire-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-    font-family: 'Share Tech Mono', monospace;
-    margin-top: 10px;
-  }
-
-  .wire-table th {
-    background: rgba(0,212,255,0.1);
-    color: var(--accent);
-    padding: 8px 12px;
-    text-align: left;
-    border: 1px solid var(--border);
-    font-size: 0.72rem;
-    letter-spacing: 1px;
-  }
-
-  .wire-table td {
-    padding: 7px 12px;
-    border: 1px solid var(--border);
-    color: var(--text);
-  }
-
-  .wire-table tr:nth-child(even) td { background: rgba(0,0,0,0.2); }
-  .wire-table tr.highlight td { background: rgba(57,255,20,0.08); color: var(--accent3); }
-
-  /* Status indicator */
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--accent3);
-    display: inline-block;
-    margin-right: 8px;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--accent3); }
-    50% { opacity: 0.4; box-shadow: none; }
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .error-msg {
-    color: #ff4466;
-    font-size: 0.8rem;
-    font-family: 'Share Tech Mono', monospace;
-    margin-top: 8px;
-  }
+  .result-unit { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; font-family: "Sarabun", sans-serif; }
+  .wire-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-family: "Sarabun", sans-serif; margin-top: 10px; }
+  .wire-table th { background: var(--well); color: var(--text); padding: 8px 10px; text-align: left; border: 1px solid var(--border); font-size: 0.82rem; letter-spacing: 0; }
+  .wire-table td { padding: 8px 10px; border: 1px solid var(--border); color: var(--text); }
+  .wire-table tr:nth-child(even) td { background: #fafbfb; }
+  .wire-table tr.highlight td { background: var(--well); color: var(--accent); font-weight: 700; }
+  .error-msg { color: #b42318; font-size: 0.9rem; font-family: "Sarabun", sans-serif; margin-top: 8px; }
 </style>
 </head>
 <body>
-<div style="background:#07101f;color:#c8d8f0;padding:10px 16px;text-align:center;font-family:Sarabun,sans-serif;font-size:0.95rem;border-bottom:1px solid #1e2d50;">
-  <a href="../" style="color:#00d4ff;text-decoration:none;">← โปรแกรมคำนวณสายไฟ No.1</a>
-  <span style="color:#5a7090;"> · เครื่องคำนวณพื้นฐาน ElecCalc Pro</span>
+<div class="crumb">
+  <a href="../">← โปรแกรมคำนวณสายไฟ No.1</a>
+  <span> · เครื่องคำนวณพื้นฐาน ElecCalc Pro</span>
 </div>
 <div class="container">
 
