@@ -13,4 +13,4 @@ jobs:
         with:
           node-version: "22"
       - name: Worked examples
-        run: node --test tests/worked-examples.test.mjs
+        run: node --test tests/*.test.mjs

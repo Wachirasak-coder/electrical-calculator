@@ -4,6 +4,8 @@ import {
   DISCLAIMER,
   EXTRA_NOTES,
   LICENSE_NOTE,
+  MV_CLASSES,
+  WIRING_OPTIONS,
   createEngine,
   fmtNum,
   fmtSize,
@@ -26,14 +28,14 @@ function route() {
   const hash = location.hash.replace(/^#/, "");
   if (hash === "notes") return "notes";
   const id = Number(hash);
-  if (id >= 1 && id <= 18) return id;
+  if (id >= 1 && id <= 20) return id;
   return "home";
 }
 
 const GROUPS = [
-  { title: "เลือกขนาดสาย", ids: [2, 3, 4, 5, 6, 10] },
+  { title: "เลือกขนาดสาย", ids: [2, 3, 4, 5, 6, 10, 19] },
   { title: "พิกัดและแรงดันตก", ids: [1, 7] },
-  { title: "ท่อ ราง และกล่อง", ids: [8, 9, 18] },
+  { title: "ท่อ ราง และกล่อง", ids: [8, 9, 18, 20] },
   { title: "สายดินและตู้ไฟฟ้า", ids: [11, 12, 13, 14] },
   { title: "เพาเวอร์แฟกเตอร์และโซลาร์", ids: [15, 16, 17] },
 ];
@@ -58,6 +60,8 @@ function icon(id) {
     16: "M12 5v2M12 17v2M5 12H3M21 12h-2M7 7l-1-1M18 18l-1-1M17 7l1-1M6 18l1-1M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
     17: "M7 8h10v8H7zM10 8V6h4v2M10 16v2h4v-2",
     18: "M5 7h14v10H5zM9 7V5h6v2",
+    19: "M4 16c4-8 12-8 16 0M8 16v3M16 16v3",
+    20: "M4 8h16v8H4zM8 8v8M12 8v8",
   };
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[id] || paths[1]}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
@@ -282,6 +286,29 @@ function sizingFields(input, options = {}) {
     field("tsec", "เวลาตัดวงจร", numInput("tsec", input.tsec, "0.01"), "วินาที ใช้คู่กับกระแสลัดวงจร"),
     field("maxSize", "ขนาดสายสูงสุด", selectInput("maxSize", input.maxSize, sizeOptions(true)), "เว้นว่างถ้าไม่จำกัด"),
   ].join("");
+  if (options.wiring) {
+    parts.unshift(
+      field("designMode", "วิธีกำหนดขนาด", selectInput("designMode", input.designMode || "load", [
+        { value: "load", label: "จากโหลด แล้วเลือกเบรกเกอร์ให้" },
+        { value: "breaker", label: "เลือกเบรกเกอร์ In ก่อน" },
+      ]), "ถ้าเลือกเบรกเกอร์ก่อนและไม่กรอกโหลด ระบบใช้ In เป็นกระแสออกแบบ"),
+      field("wiring", "ชุดสาย", selectInput("wiring", input.wiring || "", [{ value: "", label: "ไม่ระบุ — ใช้จำนวนเฟสด้านล่าง" }, ...WIRING_OPTIONS.map((item) => ({ value: item.id, label: item.label }))]), "ถ้าระบุชุดสาย จำนวนเฟสจะยึดตามชุดนี้"),
+      field("neutralRatio", "ขนาดนิวทรัล", selectInput("neutralRatio", input.neutralRatio == null ? 1 : input.neutralRatio, [
+        { value: 1, label: "100% ของสายเฟส" },
+        { value: 0.5, label: "50% ของสายเฟส แล้วปัดขึ้น" },
+      ]), "ใช้เมื่อชุดสายมีนิวทรัล"),
+    );
+  }
+  if (options.mv) {
+    parts.push(
+      field("mvClass", "ชั้นแรงดัน MV", selectInput("mvClass", input.mvClass || "12/20", MV_CLASSES.map((item) => ({ value: item, label: `${item} kV` }))), "ชุดข้อมูลใช้พิกัด Iz ชุดเดียวกันทุกชั้นแรงดัน"),
+      field("buriedSpacing", "ระยะวงจรฝังดิน", selectInput("buriedSpacing", input.buriedSpacing || "", [
+        { value: "", label: "ไม่ระบุ" },
+        { value: "touching", label: "วางชิดกัน" },
+        { value: "one-diameter", label: "ห่างหนึ่งเส้นผ่านศูนย์กลาง" },
+      ]), "ไม่มีตาราง 5-45/5-46 จึงไม่เปลี่ยนตัวเลข Cg"),
+    );
+  }
   parts.push(`<details class="fold"><summary>ตัวเลือกเพิ่มเติม</summary><div class="fold-body fields">${advanced}</div></details>`);
   if (options.duct) {
     parts.push(field("ductCircuits", "จำนวนวงจรใน duct bank", numInput("ductCircuits", input.ductCircuits, "1"), "เว้นว่างเพื่อใช้กลุ่มติดตั้งด้านบน ตาราง 5-38 เป็นค่าอ้างอิง"));
@@ -327,9 +354,11 @@ function formFor(id, input) {
       field("phase", "จำนวนเฟส", selectInput("phase", input.phase, phaseOptions())),
     ].join("");
   }
-  if ([2, 3, 6, 10].includes(id)) return sizingFields(input, { duct: id === 6 });
+  if (id === 2 || id === 3) return sizingFields(input, { wiring: true });
+  if (id === 6) return sizingFields(input, { duct: true, mv: true });
+  if (id === 10) return sizingFields(input);
   if (id === 4) return sizingFields(input, { motor: true });
-  if (id === 5) return sizingFields(input, { transformer: true });
+  if (id === 5) return sizingFields(input, { transformer: true, wiring: true });
   if (id === 7) {
     return [
       field("volt", "แรงดันต้นทาง", numInput("volt", input.volt, "1"), "โวลต์"),
@@ -395,7 +424,10 @@ function formFor(id, input) {
   if (id === 16) {
     return [
       field("roof", "พื้นที่หลังคา (m²)", numInput("roof", input.roof, "0.1")),
-      field("kwhDay", "พลังงานใช้กลางวัน (kWh/วัน)", numInput("kwhDay", input.kwhDay, "0.1")),
+      field("billBaht", "ค่าไฟต่อเดือน (บาท)", numInput("billBaht", input.billBaht, "1"), "เว้นว่างถ้ากรอกพลังงานกลางวันเอง"),
+      field("tariff", "อัตราค่าไฟ (บาท/kWh)", numInput("tariff", input.tariff, "0.01")),
+      field("daytimeShare", "สัดส่วนใช้กลางวัน (0–1)", numInput("daytimeShare", input.daytimeShare, "0.01"), "เช่น 0.5 คือครึ่งหนึ่งของหน่วยในบิล"),
+      field("kwhDay", "พลังงานใช้กลางวัน (kWh/วัน)", numInput("kwhDay", input.kwhDay, "0.1"), "ใช้เมื่อไม่ได้กรอกค่าไฟ"),
       field("inverterKw", "กำลังอินเวอร์เตอร์ฝั่ง AC (kW)", numInput("inverterKw", input.inverterKw, "0.1")),
       field("volt", "แรงดัน AC (V)", numInput("volt", input.volt, "1")),
       field("phase", "ระบบ AC", selectInput("phase", input.phase, phaseOptions())),
@@ -410,8 +442,21 @@ function formFor(id, input) {
     ].join("");
   }
   if (id === 17) {
+    const appliances = [0, 1, 2, 3].map((index) => `
+      <div class="row-card">
+        <h3>เครื่องใช้ ${index + 1}</h3>
+        ${field(`a${index}w`, "กำลัง (W)", numInput(`a${index}w`, null, "1"))}
+        ${field(`a${index}qty`, "จำนวน", numInput(`a${index}qty`, null, "1"))}
+        ${field(`a${index}hours`, "ชั่วโมง/วัน", numInput(`a${index}hours`, null, "0.1"))}
+      </div>`).join("");
     return [
-      field("whDay", "พลังงานโหลดต่อวัน (Wh/วัน)", numInput("whDay", input.whDay, "1")),
+      field("batteryType", "ชนิดแบตเตอรี่", selectInput("batteryType", input.batteryType || "", [
+        { value: "", label: "กรอก DOD และประสิทธิภาพเอง" },
+        { value: "lithium", label: "ลิเธียม LiFePO₄ — DOD 0.8, ประสิทธิภาพ 0.95" },
+        { value: "lead", label: "ตะกั่วกรด — DOD 0.5, ประสิทธิภาพ 0.85" },
+      ]), "ค่าตั้งต้นเป็นค่าประมาณของการออกแบบ"),
+      appliances,
+      field("whDay", "พลังงานโหลดต่อวัน (Wh/วัน)", numInput("whDay", input.whDay, "1"), "ใช้เมื่อไม่ได้กรอกเครื่องใช้ด้านบน"),
       field("days", "จำนวนวันสำรอง (วัน)", numInput("days", input.days, "1")),
       field("volt", "แรงดันระบบแบตเตอรี่ (V)", numInput("volt", input.volt, "1")),
       field("dod", "ความลึกการคายประจุ DOD (0–1)", numInput("dod", input.dod, "0.01")),
@@ -422,12 +467,43 @@ function formFor(id, input) {
       field("peakW", "กำลังโหลดสูงสุด (W)", numInput("peakW", input.peakW, "1")),
     ].join("");
   }
+  if (id === 19) {
+    return [
+      field("unit", "หน่วยโหลด", selectInput("unit", input.unit, unitOptions())),
+      field("load", "ค่าโหลด", numInput("load", input.load, "0.01")),
+      field("volt", "แรงดันระบบ", numInput("volt", input.volt, "1"), "โวลต์"),
+      field("pf", "เพาเวอร์แฟกเตอร์", numInput("pf", input.pf, "0.01")),
+      field("phase", "จำนวนเฟส", selectInput("phase", input.phase, phaseOptions())),
+      field("length", "ความยาวสาย", numInput("length", input.length, "0.1"), "เมตร ใช้กับแรงดันตกโดยประมาณ"),
+      field("temp", "อุณหภูมิโดยรอบ", numInput("temp", input.temp, "0.1"), "ตารางกำหนดที่ 40°C"),
+      field("sets", "จำนวนชุดขนาน", numInput("sets", input.sets, "1")),
+      field("designMode", "วิธีกำหนดขนาด", selectInput("designMode", input.designMode || "load", [
+        { value: "load", label: "จากโหลด" },
+        { value: "breaker", label: "เลือกเบรกเกอร์ก่อน" },
+      ])),
+      field("breaker", "เบรกเกอร์", selectInput("breaker", input.breaker, breakerOptions())),
+    ].join("");
+  }
+  if (id === 20) {
+    const conduits = (input.conduits || [50]).map((size, index) => field(`c${index}`, `ท่อ ${index + 1} (mm)`, numInput(`c${index}`, size, "1"), index === 0 ? "ท่อที่ใหญ่สุดใช้เป็นฐานของ 8× หรือ 6×" : "เว้นว่างได้"));
+    return [
+      field("mode", "ลักษณะการดึง", selectInput("mode", input.mode, [
+        { value: "straight", label: "ดึงตรง (Straight pull)" },
+        { value: "angle", label: "ดึงมุม (Angle pull)" },
+        { value: "u", label: "ดึงกลับรูปตัว U" },
+      ])),
+      ...conduits,
+    ].join("");
+  }
   return [
     field("size", "ขนาดตัวนำหลัก (mm²)", selectInput("size", input.size, sizeOptions())),
     field("conductors", "จำนวนตัวนำ (ไม่รวมสายดิน)", numInput("conductors", input.conductors, "1")),
     field("earth", "รวมสายดิน?", selectInput("earth", input.earth, [{ value: 1, label: "ใช่ (นับ 1)" }, { value: 0, label: "ไม่นับ" }])),
     field("devices", "จำนวนอุปกรณ์ในกล่อง (นับเป็น 2 ตัวนำต่อชุด)", numInput("devices", input.devices, "1")),
-    field("category", "ประเภทกล่อง (ว่าง = ทุกประเภท ตามสูตรสมุดงาน)", selectInput("category", input.category, [
+    field("terminations", "จุดต่อในกล่อง", numInput("terminations", input.terminations, "1"), "เว้นว่างเพื่อใช้จำนวนตัวนำด้านบนแบบเดิม"),
+    field("through", "สายผ่าน ไม่ตัด", numInput("through", input.through, "1"), "นับ 1 ต่อเส้น"),
+    field("loops", "ลูปหรือหางสาย", numInput("loops", input.loops, "1"), "นับ 1 ต่อเส้น"),
+    field("category", "ประเภทกล่อง", selectInput("category", input.category, [
       { value: "", label: "ทุกประเภท" },
       { value: "round_or_octagon", label: "กล่องกลม/แปดเหลี่ยม" },
       { value: "square", label: "กล่องสี่เหลี่ยม" },
@@ -493,10 +569,38 @@ function readInput(id, form) {
       tsec: take("tsec", true),
       maxSize: take("maxSize", true),
       phase: take("phase", true),
+      wiring: take("wiring") || null,
+      neutralRatio: take("neutralRatio", true),
+      designMode: take("designMode") || "load",
     };
     if (id === 4) input.motorType = take("motorType");
-    if (id === 6) input.ductCircuits = take("ductCircuits", true);
+    if (id === 6) {
+      input.ductCircuits = take("ductCircuits", true);
+      input.mvClass = take("mvClass");
+      input.buriedSpacing = take("buriedSpacing") || null;
+    }
     return input;
+  }
+  if (id === 19) {
+    return {
+      ...base,
+      unit: take("unit"),
+      load: take("load", true),
+      volt: take("volt", true),
+      pf: take("pf", true),
+      phase: take("phase", true),
+      length: take("length", true),
+      temp: take("temp", true),
+      sets: take("sets", true),
+      breaker: take("breaker", true),
+      designMode: take("designMode") || "load",
+    };
+  }
+  if (id === 20) {
+    return {
+      mode: take("mode"),
+      conduits: [0, 1, 2, 3].map((index) => take(`c${index}`, true)),
+    };
   }
   if (id === 7) {
     return {
@@ -562,6 +666,9 @@ function readInput(id, form) {
       m2PerKwp: take("m2PerKwp", true),
       cableType: take("cableType"),
       group: take("group"),
+      billBaht: take("billBaht", true),
+      tariff: take("tariff", true),
+      daytimeShare: take("daytimeShare", true),
     };
   }
   if (id === 17) {
@@ -575,6 +682,12 @@ function readInput(id, form) {
       chargeEff: take("chargeEff", true),
       acVolt: take("acVolt", true),
       peakW: take("peakW", true),
+      batteryType: take("batteryType") || null,
+      appliances: [0, 1, 2, 3].map((index) => ({
+        w: take(`a${index}w`, true),
+        qty: take(`a${index}qty`, true),
+        hours: take(`a${index}hours`, true),
+      })),
     };
   }
   return {
@@ -583,6 +696,9 @@ function readInput(id, form) {
     earth: take("earth", true),
     devices: take("devices", true),
     category: take("category"),
+    terminations: take("terminations", true),
+    through: take("through", true),
+    loops: take("loops", true),
   };
 }
 
@@ -689,6 +805,12 @@ function renderResult(id, input, result) {
         metric("FLC จากตาราง", result.motor.flc == null ? "N/A" : fmtNum(result.motor.flc, 0), "A"),
         metric("ตัวคูณ Ic/In", result.motor.multiplier ?? "—", ""),
       );
+    }
+    if (result.neutralSize != null) items.push(metric("สายนิวทรัล", fmtSize(result.neutralSize), "mm²"));
+    if (result.peFromBreaker != null) items.push(metric("PE จากเบรกเกอร์", fmtSize(result.peFromBreaker), "mm²"));
+    if (result.peRecommended != null) items.push(metric("PE ที่แนะนำ", fmtSize(result.peRecommended), "mm²"));
+    if (result.suggestedConduit && result.suggestedConduit.conduitMm) {
+      items.push(metric("ท่อที่แนะนำ", String(result.suggestedConduit.conduitMm), "mm"));
     }
     bits.push(`<div class="metrics">${items.join("")}</div>`);
     bits.push(`<p>${esc(result.reason || "")}</p>`);
@@ -846,8 +968,12 @@ function renderResult(id, input, result) {
       ${metric("กระแสออกแบบ DC", fmtNum(result.iDc), "A")}
       ${metric("Ca สาย PV", fmtNum(result.ca), "")}
       ${metric("พิกัดสาย DC หลัง Ca", fmtNum(result.dcIz), "A")}
+      ${metric("พลังงานจากบิล", fmtNum(result.kwhFromBill), "kWh/วัน")}
+      ${metric("ขนาดสาย AC", result.acSize == null ? "N/A" : fmtSize(result.acSize), "mm²")}
+      ${metric("เบรกเกอร์สาย AC", result.acIn == null ? "N/A" : fmtNum(result.acIn, 0), "A")}
+      ${metric("แรงดันตกสาย AC", vdCell(result.acVd), "%")}
     </div>`);
-    bits.push(`<p class="formula">กระแส AC = ${fmtNum(result.ibAc)} A ที่ ${esc(input.cableType)} / ${esc(input.group)} — <a href="#3">คำนวณขนาดสาย AC ในขนาดสาย 3 เฟส</a></p>`);
+    bits.push(`<p class="formula">สาย AC ${fmtNum(result.ibAc)} A ขนาด ${result.acSize == null ? "N/A" : fmtSize(result.acSize)} mm² ที่ ${esc(input.cableType)} / ${esc(input.group)}</p>`);
     bits.push(`<p>${esc(result.reason || "")}</p>`);
     bits.push(alerts(result.alerts));
     return bits.join("");
@@ -863,9 +989,38 @@ function renderResult(id, input, result) {
       ${metric("กระแสชาร์จคอนโทรลเลอร์", fmtNum(result.scc), "A")}
       ${metric("อินเวอร์เตอร์แนะนำ", fmtNum(result.inverter, 0), "W")}
       ${metric("กระแสสาย DC ฝั่งแบต", fmtNum(result.idc), "A")}
+      ${metric("แรงดันที่แนะนำ", result.suggestedVolt == null ? "—" : String(result.suggestedVolt), "V")}
+      ${metric("ชาร์จคอนโทรลเลอร์", result.controllerStep == null ? "N/A" : String(result.controllerStep), "A")}
+      ${metric("อินเวอร์เตอร์มาตรฐาน", result.inverterStep == null ? "N/A" : String(result.inverterStep), "W")}
+      ${metric("สาย DC", result.dcSize == null ? "N/A" : fmtSize(result.dcSize), "mm²")}
     </div>`);
     bits.push(`<p>${esc(result.reason || "")}</p>`);
     if (input.acVolt) bits.push(`<p class="hint">แรงดันอินเวอร์เตอร์ AC ${esc(input.acVolt)} V ถูกบันทึกตามชีตต้นทาง สูตรขนาดอินเวอร์เตอร์ใช้กำลังโหลดสูงสุด × 1.25</p>`);
+    bits.push(alerts(result.alerts));
+    return bits.join("");
+  }
+  if (id === 19) {
+    bits.push(hero(result.pass, "ขนาดสายอากาศ", result.size == null ? "N/A" : fmtSize(result.size), "mm²", [
+      { label: "กระแส Ib", value: fmtNum(result.ib), unit: "A" },
+      { label: "เบรกเกอร์", value: result.in == null ? "N/A" : fmtNum(result.in, 0), unit: "A" },
+    ]));
+    bits.push(`<div class="metrics">
+      ${metric("Iz ตาราง 40°C", fmtNum(result.iz, 0), "A")}
+      ${metric("Iz หลัง Ca และชุดขนาน", fmtNum(result.izAdj), "A")}
+      ${metric("Ca", fmtNum(result.ca), "")}
+      ${metric("แรงดันตกโดยประมาณ", fmtNum(result.vd), "%")}
+    </div>`);
+    bits.push(`<p>${esc(result.reason || "")}</p>`);
+    bits.push(alerts(result.alerts));
+    return bits.join("");
+  }
+  if (id === 20) {
+    const modeName = result.mode === "straight" ? "ดึงตรง" : result.mode === "u" ? "ดึงกลับรูปตัว U" : "ดึงมุม";
+    bits.push(hero(result.pass, "ความยาวกล่องอย่างน้อย", result.length == null ? "N/A" : fmtNum(result.length, 0), "mm", [
+      { label: "ท่อใหญ่สุด", value: result.largest == null ? "—" : fmtNum(result.largest, 0), unit: "mm" },
+      { label: "ลักษณะ", value: modeName },
+    ]));
+    bits.push(`<p>${esc(result.reason || "")}</p>`);
     bits.push(alerts(result.alerts));
     return bits.join("");
   }
@@ -886,7 +1041,7 @@ function renderResult(id, input, result) {
 
 function pager(id) {
   const prev = id > 1 ? calcById(id - 1) : null;
-  const next = id < 18 ? calcById(id + 1) : null;
+  const next = id < 20 ? calcById(id + 1) : null;
   return `<nav class="pager" aria-label="เครื่องคำนวณถัดไป">
     ${prev ? `<a href="#${prev.id}">← ${esc(prev.title)}</a>` : "<span></span>"}
     ${next ? `<a href="#${next.id}">${esc(next.title)} →</a>` : "<span></span>"}
@@ -909,6 +1064,7 @@ function calcView(id) {
           </div>
         </details>
         <form id="calc-form" autocomplete="off">
+          ${field("projectName", "ชื่องานสำหรับรายงาน", `<input id="projectName" name="projectName" type="text" value="">`, "แสดงบนแผ่นพิมพ์")}
           <div class="fields">${formFor(id, input)}</div>
           <div class="actions">
             <button type="button" id="reset" class="ghost">คืนค่าตัวอย่าง</button>
@@ -919,6 +1075,7 @@ function calcView(id) {
       <section class="card results" id="calc-out" aria-live="polite"></section>
     </div>
     ${pager(id)}
+    <article id="print-sheet" class="print-sheet"></article>
     ${footer()}
   `, calc.title, id);
 }
@@ -1003,7 +1160,30 @@ function bindCalc(id) {
   });
   form.addEventListener("submit", (event) => event.preventDefault());
   document.getElementById("reset").addEventListener("click", () => paint(id));
-  document.getElementById("print").addEventListener("click", () => window.print());
+  document.getElementById("print").addEventListener("click", () => {
+    const calc = calcById(id);
+    const project = (form.elements.projectName && form.elements.projectName.value.trim()) || "ไม่ได้ตั้งชื่อ";
+    const sheet = document.getElementById("print-sheet");
+    sheet.innerHTML = `
+      <p class="quiet">โปรแกรมคำนวณสายไฟ No.1</p>
+      <h1>${esc(project)}</h1>
+      <h2>${esc(calc.title)} <span class="en">${esc(calc.en)}</span></h2>
+      <h3>ข้อมูลที่กรอก</h3>
+      <p>${[...form.querySelectorAll(".field")].map((node) => {
+        const label = node.querySelector(".field-label");
+        const control = node.querySelector("input, select");
+        if (!label || !control || control.name === "projectName") return "";
+        const shown = control.tagName === "SELECT" ? control.selectedOptions[0]?.textContent || control.value : control.value;
+        return shown ? `${label.textContent}: ${shown}` : "";
+      }).filter(Boolean).join("<br>")}</p>
+      <h3>ผลลัพธ์</h3>
+      ${out.innerHTML}
+      <h3>มาตรฐาน</h3>
+      <p>${esc(calc.refs)}</p>
+      <p><strong>${esc(LICENSE_NOTE)}</strong></p>
+      <p>${esc(DISCLAIMER)}</p>`;
+    window.print();
+  });
   const chips = document.getElementById("dist-chips");
   if (chips) {
     chips.addEventListener("click", (event) => {
