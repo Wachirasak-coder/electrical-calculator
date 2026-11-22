@@ -1,4 +1,4 @@
-const CACHE = "cable-calc-no1-v1";
+const CACHE = "cable-calc-no1-v2";
 const ASSETS = [
   "./",
   "./index.html",
