@@ -488,9 +488,11 @@ footer.site p { margin: 8px 0; }
   .row-card h3 { grid-column: 1 / -1; }
 }
 
+.print-sheet { display: none; }
+
 @media print {
-  .appbar, .actions, .pager, .search, .result-dock, .sheet, footer.site { display: none !important; }
+  .appbar, .layout, .pager, .search, .result-dock, .sheet, footer.site, .disclaimer, .skip { display: none !important; }
+  .print-sheet { display: block !important; background: white; color: black; padding: 12px; }
+  .print-sheet .fold { display: none; }
   body { background: white; color: black; }
-  .results { position: static; }
-  .card { box-shadow: none; }
 }

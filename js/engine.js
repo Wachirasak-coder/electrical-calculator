@@ -29,6 +29,39 @@ export const CORE_OPTIONS = [
   { name: "หลายแกน (multi-core)", id: "multiCore" },
 ];
 
+export const WIRING_OPTIONS = [
+  { id: "1P_2W", phase: 1, neutral: false, ground: false, label: "1 เฟส 2 สาย (1P-2W)" },
+  { id: "1P_2W_G", phase: 1, neutral: false, ground: true, label: "1 เฟส 2 สาย + ดิน (1P-2W+G)" },
+  { id: "1P_3W", phase: 1, neutral: true, ground: false, label: "1 เฟส 3 สาย (1P-3W)" },
+  { id: "1P_3W_G", phase: 1, neutral: true, ground: true, label: "1 เฟส 3 สาย + ดิน (1P-3W+G)" },
+  { id: "3P_3W", phase: 3, neutral: false, ground: false, label: "3 เฟส 3 สาย (3P-3W)" },
+  { id: "3P_3W_G", phase: 3, neutral: false, ground: true, label: "3 เฟส 3 สาย + ดิน (3P-3W+G)" },
+  { id: "3P_4W", phase: 3, neutral: true, ground: false, label: "3 เฟส 4 สาย (3P-4W)" },
+  { id: "3P_4W_G", phase: 3, neutral: true, ground: true, label: "3 เฟส 4 สาย + ดิน (3P-4W+G)" },
+];
+
+export const MV_CLASSES = ["3.6/6", "6/10", "12/20", "18/30"];
+
+export const CONTROLLER_STEPS = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150];
+export const INVERTER_STEPS = [500, 800, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 8000, 10000];
+
+export const BATTERY_PRESETS = {
+  lithium: { dod: 0.8, eff: 0.95, label: "ลิเธียม LiFePO₄" },
+  lead: { dod: 0.5, eff: 0.85, label: "ตะกั่วกรด / ดีพไซเคิล" },
+};
+
+export const BURIED_SPACING_NOTE =
+  "ชุดข้อมูลนี้ไม่มีตารางตัวคูณระยะห่างวงจรฝังดิน (ตาราง 5-45/5-46) จึงไม่ปรับ Cg ตามการวางชิดหรือห่างหนึ่งเส้นผ่านศูนย์กลาง ระยะที่เลือกถูกบันทึกไว้ให้ตรวจกับตารางฉบับจริง";
+
+export const MV_CLASS_NOTE =
+  "ชุดข้อมูลมีพิกัดสายแรงดันปานกลางชุดเดียวตาม IEC 60502-2 ไม่ได้แยก Iz ตามชั้นแรงดัน 3.6/6, 6/10, 12/20 หรือ 18/30 kV ชั้นแรงดันจึงเป็นข้อมูลประกอบ ไม่ใช่ตารางคนละชุด";
+
+export const MV_BURIED_NOTE =
+  "ไม่มีพิกัดกระแสฝังดินโดยตรงของสายแรงดันปานกลางในชุดข้อมูล เมื่อเลือกกลุ่ม G5 หรือ G6 จึงใช้ตาราง 5-38 duct bank แทน และต้องตรวจกับตารางฉบับจริง";
+
+export const SAC_NOTE =
+  "พิกัดกระแสสายอากาศอะลูมิเนียมมาจากตารางที่กำหนดไว้สำหรับแดดจัด อากาศนิ่ง และอุณหภูมิโดยรอบ 40°C ถ้าอุณหภูมิต่างจากนี้ตัวคูณ Ca เป็นค่าประมาณจากตารางอากาศ และแรงดันตกจาก R/X เป็นค่าประมาณ ไม่ได้อยู่ในตารางพิกัดนั้น";
+
 export function sizeKey(size) {
   const n = Number(size);
   if (!Number.isFinite(n)) return "";
@@ -200,6 +233,7 @@ export function createEngine(data) {
   }
 
   function loadCurrent(input) {
+    if (input.load == null || input.load === "") return null;
     const load = Number(input.load);
     const volt = Number(input.volt);
     const phase = Number(input.phase) === 1 ? 1 : 3;
@@ -260,11 +294,66 @@ export function createEngine(data) {
     return alerts;
   }
 
+  function peFromBreaker(inA) {
+    if (!finite(inA)) return null;
+    const row = data.pe_breaker.find((item) => Number(item.breakerRating) >= inA - 1e-9);
+    return row ? Number(row.earthingSize) : null;
+  }
+
+  function nextSize(value, list) {
+    if (!finite(value)) return null;
+    const hit = list.find((size) => size >= value - 1e-9);
+    return hit == null ? null : Number(hit);
+  }
+
+  function capEarth(phasePe, breakerPe, phaseSize, list) {
+    const need = Math.max(phasePe, breakerPe || 0);
+    const capped = Math.min(need, phaseSize);
+    const snapped = nextSize(capped, list);
+    if (snapped == null) return phasePe;
+    return snapped <= phaseSize + 1e-9 ? snapped : phasePe;
+  }
+
+  function dimLabelFor(type, cores, wiring) {
+    if (!type) return null;
+    if (type.spec === "60227 IEC 01") return "IEC 01";
+    if (type.spec === "THW-A") return "THW-A";
+    const multi = cores === "multiCore";
+    const four = wiring && wiring.neutral;
+    if (type.spec === "NYY") return multi ? (four ? "NYY 4/C" : "NYY 3/C") : "NYY 1/C";
+    if (type.spec === "VCT" || type.spec === "60227 IEC 10") return multi ? (four ? "VCT 4/C" : "VCT 3/C") : "VCT 1/C";
+    if (type.insulation === "XLPE") return multi ? (four ? "XLPE 4/C" : "XLPE 3/C") : "XLPE 1/C";
+    return null;
+  }
+
+  function suggestConduit({ type, cores, wiring, sets, phaseSize, neutralSize, earthSize }) {
+    if (!type || !finite(phaseSize) || !finite(sets) || sets <= 0) return null;
+    const label = dimLabelFor(type, cores, wiring);
+    if (!label) return { pass: "FAIL", reason: "ไม่มีพื้นที่ครอบครองของชนิดสายนี้ในตารางท่อ", alerts: ["ขนาดท่อที่แนะนำใช้พื้นที่ครอบครองจากตารางมิติสาย และเป็นค่าประมาณของชนิดที่ใกล้เคียง"] };
+    const lines = [];
+    if (cores === "multiCore") {
+      lines.push({ label, size: phaseSize, qty: sets });
+    } else {
+      const phases = wiring ? wiring.phase : 3;
+      lines.push({ label, size: phaseSize, qty: phases * sets });
+      if (wiring && wiring.neutral && finite(neutralSize)) lines.push({ label, size: neutralSize, qty: sets });
+      if (wiring && wiring.ground && finite(earthSize)) lines.push({ label, size: earthSize, qty: sets });
+    }
+    const fill = conduitFill({ lines });
+    fill.approximate = true;
+    fill.alerts = [
+      ...(fill.alerts || []),
+      "ขนาดท่อนี้ประมาณจากสายเฟส นิวทรัล และสายดินของผลเลือกขนาด เป็นค่าช่วยออกแบบ ต้องตรวจพื้นที่ครอบครองจริงของสาย",
+    ];
+    return fill;
+  }
+
   function sizeCable(input, ibOverride = null) {
     const type = resolveType(input.cableType);
     const cores = coreId(input.cores);
     const group = groupById.get(input.group);
-    const phase = Number(input.phase) === 1 ? 1 : 3;
+    const wiring = WIRING_OPTIONS.find((item) => item.id === input.wiring) || null;
+    const phase = wiring ? wiring.phase : Number(input.phase) === 1 ? 1 : 3;
     const sets = input.sets == null || input.sets === "" ? null : Number(input.sets);
     const length = input.length == null ? null : Number(input.length);
     const vdLimit = input.vdLimit == null ? null : Number(input.vdLimit);
@@ -276,7 +365,8 @@ export function createEngine(data) {
     const isc = input.isc == null || input.isc === "" ? null : Number(input.isc);
     const tsec = input.tsec == null || input.tsec === "" ? null : Number(input.tsec);
 
-    const ib = ibOverride != null ? ibOverride : loadCurrent(input);
+    let ib = ibOverride != null ? ibOverride : loadCurrent({ ...input, phase });
+    if (input.designMode === "breaker" && finite(forcedBreaker) && !finite(ib)) ib = forcedBreaker;
     const empty = {
       ib,
       pass: "FAIL",
@@ -302,7 +392,19 @@ export function createEngine(data) {
 
     const rows = sizes.map((size) => {
       const key = ampKey(type.spec, type.insulation, input.group, cores, phase, size);
-      const iz = amp.has(key) ? Number(amp.get(key)) : null;
+      let iz = amp.has(key) ? Number(amp.get(key)) : null;
+      let buriedProxy = false;
+      if (
+        iz == null &&
+        type.spec === "IEC 60502-2" &&
+        (input.group === "G5" || input.group === "G6")
+      ) {
+        const duct = ductBank(size, input.ductCircuits == null || input.ductCircuits === "" ? 1 : input.ductCircuits);
+        if (duct && duct.iz != null) {
+          iz = duct.iz;
+          buriedProxy = true;
+        }
+      }
       if (iz == null || ca == null) {
         return {
           size,
@@ -316,6 +418,7 @@ export function createEngine(data) {
           shockPass: null,
           pass: false,
           table: null,
+          buriedProxy: false,
         };
       }
       const izAdj = iz * ca * cgVal * sets;
@@ -360,14 +463,39 @@ export function createEngine(data) {
         smin: sminRequired,
         shockPass,
         pass,
-        table: ampTable.get(key) || null,
+        table: buriedProxy ? "5-38" : ampTable.get(key) || null,
+        buriedProxy,
       };
     });
 
     const chosen = rows.find((row) => row.pass) || null;
     const pass = chosen ? "PASS" : "FAIL";
     const peSize = chosen ? pe.get(Number(chosen.size)) ?? null : null;
+    const breakerPe = peFromBreaker(inA);
+    const neutralRatio = Number(input.neutralRatio) === 0.5 ? 0.5 : 1;
+    const neutralSize =
+      wiring && wiring.neutral && chosen ? nextSize(chosen.size * neutralRatio, sizes) : null;
+    const peRecommended =
+      peSize == null
+        ? null
+        : capEarth(Number(peSize), breakerPe, chosen.size, sizes);
     const usesRx = vdOk && rows.some((row) => finite(row.vdRx));
+    const alerts = cableAlerts({ type, groupId: input.group, cores, usesRx });
+    if (input.buriedSpacing) alerts.push(BURIED_SPACING_NOTE);
+    if (input.mvClass) alerts.push(`${MV_CLASS_NOTE} ชั้นที่เลือก: ${input.mvClass} kV`);
+    if (rows.some((row) => row.buriedProxy)) alerts.push(MV_BURIED_NOTE);
+    if (neutralRatio === 0.5 && neutralSize != null) {
+      alerts.push("สายนิวทรัล 50% ของสายเฟส แล้วเลื่อนขึ้นเป็นขนาดมาตรฐานถัดไป เป็นทางเลือกออกแบบ ไม่ใช่ตารางแยก");
+    }
+    const suggestedConduit = suggestConduit({
+      type,
+      cores,
+      wiring,
+      sets,
+      phaseSize: chosen ? chosen.size : null,
+      neutralSize,
+      earthSize: wiring && wiring.ground ? peRecommended : null,
+    });
     return {
       ib,
       in: inA,
@@ -380,6 +508,16 @@ export function createEngine(data) {
       vdTable: chosen ? chosen.vdTable : null,
       vdRx: chosen ? chosen.vdRx : null,
       pe: peSize == null ? null : Number(peSize),
+      peFromBreaker: breakerPe,
+      peRecommended,
+      wiring: wiring ? wiring.id : null,
+      neutralSize,
+      neutralRatio: wiring && wiring.neutral ? neutralRatio : null,
+      hasEarth: wiring ? wiring.ground : null,
+      suggestedConduit,
+      mvClass: input.mvClass || null,
+      buriedSpacing: input.buriedSpacing || null,
+      designMode: input.designMode || "load",
       smin: sminRequired,
       k,
       table: chosen ? chosen.table : null,
@@ -388,7 +526,7 @@ export function createEngine(data) {
         ? "ผ่านพิกัดกระแส แรงดันตก และเงื่อนไขลัดวงจร (ถ้ามีการกรอก)"
         : "ไม่พบขนาดสายที่ผ่านทุกเงื่อนไขในกลุ่ม/ชนิดที่เลือก",
       rows,
-      alerts: cableAlerts({ type, groupId: input.group, cores, usesRx }),
+      alerts,
       type,
       cores,
       phase,
@@ -573,17 +711,23 @@ export function createEngine(data) {
         area: each,
         total,
         od: dim.od_mm,
+        sheath: dim.sheath === true,
       };
     });
     if (conductors <= 0) {
       return { pass: "FAIL", reason: "ยังไม่มีรายการสายในท่อ", rows, conductors: 0, area: 0, alerts: [] };
     }
-    const percent = conductors === 1 ? 53 : conductors === 2 ? 31 : 40;
+    const active = rows.filter((row) => row.active && row.area != null);
+    const jacketed = active.length > 0 && active.every((row) => row.sheath);
+    const rule =
+      conductors <= 1 ? data.fill_rules[0] : conductors === 2 ? data.fill_rules[1] : conductors <= 4 ? data.fill_rules[conductors - 1] : data.fill_rules[4];
+    const percent = jacketed ? Number(rule.jacketedPercent) : conductors === 1 ? 53 : conductors === 2 ? 31 : 40;
     const usableKey =
       conductors === 1 ? "usableArea1Cable" : conductors === 2 ? "usableArea2Cables" : "usableArea3OrMore";
     let conduit = null;
     const forced = input.conduitMm == null || input.conduitMm === "" ? null : Number(input.conduitMm);
     if (finite(forced) && conduitByMm.has(forced)) conduit = conduitByMm.get(forced);
+    else if (jacketed) conduit = data.conduit.find((item) => (Number(item.area100) * percent) / 100 >= area - 1e-9) || null;
     else conduit = data.conduit.find((item) => Number(item[usableKey]) >= area - 1e-9) || null;
     const area100 = conduit ? Number(conduit.area100) : null;
     const usable = area100 == null ? null : (area100 * percent) / 100;
@@ -596,11 +740,13 @@ export function createEngine(data) {
     if (missing) alerts.push("บางรายการไม่พบพื้นที่ครอบครองของชื่อสาย/ขนาดที่เลือก จึงไม่ถูกรวมในพื้นที่");
     const fillNote = data.notes.find((t) => t.includes("ตาราง 5-3"));
     if (fillNote) alerts.push(fillNote);
+    if (jacketed) alerts.push("ใช้เกณฑ์ท่อมีเปลือก เพราะสายทุกรายการมีเปลือก นอกนั้นยังใช้เกณฑ์ไม่มีเปลือก 53/31/40 ตามสูตรเดิม");
     return {
       rows,
       conductors,
       area,
       percent,
+      jacketed,
       conduitMm: conduit ? Number(conduit.conduitMm) : null,
       conduitInch: conduit ? conduit.conduitInch : null,
       area100,
@@ -671,9 +817,13 @@ export function createEngine(data) {
     if (input.group === "G6" && type && type.spec === "60227 IEC 01") {
       alerts.push("สายดิน IEC 01 ห้ามฝังดินโดยตรง ต้องร้อยท่อฝังดิน");
     }
+    const breakerPe = peFromBreaker(Number(input.breaker));
+    const recommended = peSize == null ? null : capEarth(peSize, breakerPe, phase, sizes);
     const pass = peSize == null ? "FAIL" : "PASS";
     return {
       pe: peSize,
+      peFromBreaker: breakerPe,
+      peRecommended: recommended,
       rule,
       pass,
       warning: input.group === "G6" && input.cableType === "IEC 01 (THW)"
@@ -836,7 +986,14 @@ export function createEngine(data) {
 
   function solarOn(input) {
     const roof = Number(input.roof);
-    const kwh = Number(input.kwhDay);
+    const bill = Number(input.billBaht);
+    const tariff = Number(input.tariff);
+    const share = Number(input.daytimeShare);
+    let kwhFromBill = null;
+    if (finite(bill) && finite(tariff) && tariff > 0 && finite(share)) {
+      kwhFromBill = (bill / tariff / 30) * share;
+    }
+    const kwh = kwhFromBill != null ? kwhFromBill : Number(input.kwhDay);
     const inverter = Number(input.inverterKw);
     const volt = Number(input.volt);
     const phase = Number(input.phase) === 1 ? 1 : 3;
@@ -867,6 +1024,25 @@ export function createEngine(data) {
     }
     const pass = kwp > 0 && dcSize != null ? "PASS" : "FAIL";
     const pvNote = data.notes.find((t) => t.includes("สาย PV"));
+    const ac = sizeCable({
+      cableType: input.cableType,
+      cores: "แกนเดียว (single-core)",
+      group: input.group,
+      unit: "A",
+      load: ibAc,
+      volt,
+      pf: 1,
+      length: input.length == null ? 25 : Number(input.length),
+      temp: input.acTemp == null ? 35 : Number(input.acTemp),
+      ncirc: 1,
+      sets: 1,
+      vdLimit: input.vdLimit == null ? 3 : Number(input.vdLimit),
+      phase,
+    });
+    const alerts = pvNote ? [pvNote] : [];
+    if (kwhFromBill != null) {
+      alerts.push("พลังงานกลางวันคำนวณจากค่าไฟ ÷ อัตราค่าไฟ ÷ 30 วัน × สัดส่วนการใช้กลางวัน เป็นค่าประมาณของบิลรายเดือน");
+    }
     return {
       kwpRoof,
       kwpEnergy,
@@ -876,20 +1052,35 @@ export function createEngine(data) {
       ca,
       dcSize,
       dcIz,
+      kwhFromBill,
+      acSize: ac.size,
+      acIn: ac.in,
+      acVd: ac.vdTable,
+      acPass: ac.pass,
       pass,
       acType: input.cableType,
       acGroup: input.group,
-      reason: pass === "PASS" ? "ได้ขนาดระบบและสาย DC ที่ผ่านพิกัดหลัง Ca" : "คำนวณขนาดระบบหรือสาย DC ไม่ได้",
-      alerts: pvNote ? [pvNote] : [],
+      reason: pass === "PASS" ? "ได้ขนาดระบบ สาย DC และสาย AC บนผลเดียวกัน" : "คำนวณขนาดระบบหรือสาย DC ไม่ได้",
+      alerts,
     };
   }
 
   function solarOff(input) {
-    const load = Number(input.whDay);
+    const rows = Array.isArray(input.appliances) ? input.appliances : [];
+    const fromAppliances = rows.some((row) => finite(Number(row.w)) && finite(Number(row.qty)) && finite(Number(row.hours)));
+    const applianceWh = rows.reduce((sum, row) => {
+      const w = Number(row.w);
+      const qty = Number(row.qty);
+      const hours = Number(row.hours);
+      if (![w, qty, hours].every(finite)) return sum;
+      return sum + w * qty * hours;
+    }, 0);
+    const load = fromAppliances ? applianceWh : Number(input.whDay);
     const days = Number(input.days);
     const volt = Number(input.volt);
-    const dod = Number(input.dod);
-    const battEff = Number(input.battEff);
+    const preset = BATTERY_PRESETS[input.batteryType];
+    const dod = preset ? preset.dod : Number(input.dod);
+    const battEff = preset ? preset.eff : Number(input.battEff);
     const psh = Number(input.psh);
     const chargeEff = Number(input.chargeEff);
     const peak = Number(input.peakW);
@@ -902,7 +1093,20 @@ export function createEngine(data) {
     const scc = (pvW / volt) * 1.25;
     const inverter = peak * 1.25;
     const idc = (peak / volt) * 1.25;
+    const suggestedVolt = load < 1000 ? 12 : load <= 4000 ? 24 : 48;
+    const controllerStep = smallestGE(CONTROLLER_STEPS, scc);
+    const inverterStep = smallestGE(INVERTER_STEPS, inverter);
+    let dcSize = null;
+    for (const row of data.pv_amp) {
+      if (Number(row.base40) >= idc - 1e-9) {
+        dcSize = Number(row.size);
+        break;
+      }
+    }
     const pass = ah > 0 && pvW > 0 && inverter > 0 ? "PASS" : "FAIL";
+    const alerts = ["ค่านี้เป็นสูตรทางวิศวกรรมทั่วไปสำหรับระบบ Off-grid ต้องปรับกับข้อมูลแผงและแบตเตอรี่จริง"];
+    if (preset) alerts.push(`ใช้ค่าตั้งต้นแบตเตอรี่ ${preset.label}: DOD ${preset.dod} และประสิทธิภาพไป-กลับ ${preset.eff} เป็นค่าออกแบบโดยประมาณ`);
+    if (fromAppliances) alerts.push("พลังงานต่อวันคือผลรวม วัตต์ × จำนวน × ชั่วโมง ของแต่ละเครื่องใช้");
     return {
       storeWh,
       ah,
@@ -910,9 +1114,17 @@ export function createEngine(data) {
       scc,
       inverter,
       idc,
+      loadWh: load,
+      suggestedVolt,
+      controllerStep,
+      inverterStep,
+      dcSize,
+      batteryType: preset ? preset.label : null,
+      dod,
+      battEff,
       pass,
       reason: "ลำดับ Load → Battery → PV → SCC → Inverter (ต้องปรับกับข้อมูลแผงและแบตเตอรี่จริง)",
-      alerts: ["ค่านี้เป็นสูตรทางวิศวกรรมทั่วไปสำหรับระบบ Off-grid ต้องปรับกับข้อมูลแผงและแบตเตอรี่จริง"],
+      alerts,
     };
   }
 
@@ -921,10 +1133,17 @@ export function createEngine(data) {
     const conductors = Number(input.conductors);
     const earth = Number(input.earth) ? 1 : 0;
     const devices = Number(input.devices);
-    if (![size, conductors, devices].every(finite)) {
+    const terminations = input.terminations == null || input.terminations === "" ? null : Number(input.terminations);
+    const through = input.through == null || input.through === "" ? null : Number(input.through);
+    const loops = input.loops == null || input.loops === "" ? null : Number(input.loops);
+    const detailed = [terminations, through, loops].some((value) => finite(value));
+    if (!detailed && ![size, conductors, devices].every(finite)) {
       return { pass: "FAIL", reason: "กรอกข้อมูลกล่องไม่ครบ", alerts: [] };
     }
-    const equiv = conductors + earth + devices * 2;
+    if (detailed && !finite(size)) return { pass: "FAIL", reason: "กรอกขนาดตัวนำ", alerts: [] };
+    const equiv = detailed
+      ? (terminations || 0) + (through || 0) + (loops || 0) + earth + (finite(devices) ? devices : 0) * 2
+      : conductors + earth + devices * 2;
     let key = "10";
     if (size <= 1.5) key = "1.5";
     else if (size <= 2.5) key = "2.5";
@@ -946,7 +1165,77 @@ export function createEngine(data) {
       reason: box
         ? "พบกล่องมาตรฐานที่จำนวนตัวนำสูงสุดไม่น้อยกว่าตัวนำเทียบเท่า"
         : "ไม่มีกล่องในตาราง 6.4 ที่จุตัวนำเทียบเท่านี้",
-      alerts: [],
+      parts: detailed ? { terminations: terminations || 0, through: through || 0, loops: loops || 0, devices: devices || 0, earth } : null,
+      alerts: detailed ? ["นับแยกจุดต่อ สายผ่าน และลูป/หางสาย คนละ 1 ตัวนำเทียบเท่า อุปกรณ์นับ 2 และสายดินนับ 1 ตามเกณฑ์ปริมาตรกล่อง"] : [],
+    };
+  }
+
+  function pullBox(input) {
+    const mode = input.mode || "straight";
+    const conduits = (input.conduits || []).map(Number).filter((size) => finite(size) && size > 0);
+    if (!conduits.length) return { pass: "FAIL", reason: "กรอกขนาดท่ออย่างน้อย 1 ขนาด", alerts: [] };
+    const largest = Math.max(...conduits);
+    const others = conduits.reduce((sum, size) => sum + size, 0) - largest;
+    const length = mode === "straight" ? 8 * largest : 6 * largest + others;
+    const rule =
+      mode === "straight"
+        ? "ดึงตรง: ความยาว ≥ 8 เท่าของท่อใหญ่สุด"
+        : mode === "u"
+          ? "ดึงกลับรูปตัว U: ความยาว ≥ 6 เท่าของท่อใหญ่สุด + ผลรวมท่อที่เหลือในแถวเดียวกัน"
+          : "ดึงมุม: ความยาว ≥ 6 เท่าของท่อใหญ่สุด + ผลรวมท่อที่เหลือในแถวเดียวกัน";
+    return {
+      mode,
+      largest,
+      others,
+      length,
+      conduits,
+      pass: "PASS",
+      reason: rule,
+      alerts: ["เกณฑ์ดึงสายอ้างอิง วสท. และหลัก 8× / 6× ของท่อ (เทียบ NEC 314.28) ใช้ขนาดท่อที่กรอก ไม่ได้เผื่อข้อต่อหรือรัศมีดัดเพิ่ม"],
+    };
+  }
+
+  function aerialAluminium(input) {
+    const sets = input.sets == null ? 1 : Number(input.sets);
+    const temp = input.temp == null ? 40 : Number(input.temp);
+    const length = input.length == null ? 30 : Number(input.length);
+    const volt = Number(input.volt);
+    const phase = Number(input.phase) === 1 ? 1 : 3;
+    let ib = loadCurrent({ ...input, phase, unit: input.unit || "A" });
+    const forcedBreaker = input.breaker == null || input.breaker === "" ? null : Number(input.breaker);
+    if (input.designMode === "breaker" && finite(forcedBreaker) && !finite(ib)) ib = forcedBreaker;
+    if (!finite(ib) || !finite(sets) || sets <= 0) {
+      return { pass: "FAIL", reason: "กรอกกระแสหรือโหลดของสายอากาศ", alerts: [SAC_NOTE] };
+    }
+    const ca = caFactor("air", "XLPE", temp);
+    const inA = finite(forcedBreaker) ? forcedBreaker : smallestGE(breakers, ib);
+    const table = Object.entries(data.sac)
+      .map(([size, iz]) => ({ size: Number(size), iz: Number(iz) }))
+      .sort((a, b) => a.size - b.size);
+    const rows = table.map((row) => {
+      const izAdj = ca == null ? null : row.iz * ca * sets;
+      return { ...row, izAdj, pass: finite(izAdj) && finite(inA) && izAdj >= inA - 1e-9 };
+    });
+    const chosen = rows.find((row) => row.pass) || null;
+    let vd = null;
+    if (chosen && finite(volt) && volt !== 0 && finite(Number(input.pf))) {
+      const rxv = rxOf("aluminium", "XLPE", chosen.size);
+      if (rxv) {
+        vd = vdRxPercent({ r: rxv.r, x: rxv.x, ib, length, volt, pf: Number(input.pf), phase });
+      }
+    }
+    return {
+      ib,
+      in: inA,
+      ca,
+      size: chosen ? chosen.size : null,
+      iz: chosen ? chosen.iz : null,
+      izAdj: chosen ? chosen.izAdj : null,
+      vd,
+      rows,
+      pass: chosen ? "PASS" : "FAIL",
+      reason: chosen ? "ผ่านพิกัดตารางสายอากาศที่ 40°C แดดจัด อากาศนิ่ง" : "ไม่พบขนาดในตารางสายอากาศที่รับกระแสนี้",
+      alerts: [SAC_NOTE],
     };
   }
 
@@ -1011,6 +1300,10 @@ export function createEngine(data) {
         return solarOff(input);
       case 18:
         return boxFill(input);
+      case 19:
+        return aerialAluminium(input);
+      case 20:
+        return pullBox(input);
       default:
         return { pass: "FAIL", reason: "ไม่พบฟังก์ชัน", alerts: [] };
     }
@@ -1037,5 +1330,8 @@ export function createEngine(data) {
     sizeCable,
     rateCurrent,
     motorInfo,
+    conduitFill,
+    pullBox,
+    aerialAluminium,
   };
 }

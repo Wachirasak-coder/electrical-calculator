@@ -145,6 +145,22 @@ export const CALCS = [
     refs: "อ้างอิง: วสท. ตาราง 6.4 ขนาดกล่องมาตรฐานและจำนวนตัวนำสูงสุด",
     example: "ตัวอย่าง: ตัวนำ 4 mm² จำนวน 8 เส้น รวมสายดิน และอุปกรณ์ 2 ชุด",
   },
+  {
+    id: 19,
+    title: "สายอากาศอะลูมิเนียม",
+    en: "Aerial Aluminium",
+    blurb: "พิกัดจากตารางสายอากาศ แดดจัด อากาศนิ่ง 40°C",
+    refs: "อ้างอิงตารางพิกัดสายอากาศอะลูมิเนียมในชุดข้อมูล ใช้เมื่ออุณหภูมิ 40°C แดดจัดและอากาศนิ่ง",
+    example: "ตัวอย่าง: กระแส 200 A ที่ 40°C ได้ขนาด 70 mm²",
+  },
+  {
+    id: 20,
+    title: "กล่องดึงสาย",
+    en: "Pull Box",
+    blurb: "ดึงตรง 8 เท่า ดึงมุมและดึงกลับ 6 เท่าบวกท่อที่เหลือ",
+    refs: "อ้างอิงเกณฑ์กล่องดึงสาย วสท. และหลัก 8× / 6× ของขนาดท่อ",
+    example: "ตัวอย่าง: ท่อ 50 mm ดึงตรง ได้ความยาวอย่างน้อย 400 mm",
+  },
 ];
 
 function section(partial) {
@@ -397,7 +413,11 @@ export function defaultInput(id) {
         peakW: 400,
       };
     case 18:
-      return { size: 4, conductors: 8, earth: 1, devices: 2, category: "" };
+      return { size: 4, conductors: 8, earth: 1, devices: 2, category: "", terminations: null, through: null, loops: null };
+    case 19:
+      return { unit: "A", load: 200, volt: 400, pf: 0.9, phase: 3, length: 40, temp: 40, sets: 1, breaker: null, designMode: "load" };
+    case 20:
+      return { mode: "straight", conduits: [50, null, null, null] };
     default:
       return {};
   }
