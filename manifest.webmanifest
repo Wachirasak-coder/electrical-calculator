@@ -1,0 +1,11 @@
+{
+  "name": "โปรแกรมคำนวณสายไฟ No.1",
+  "short_name": "คำนวณสายไฟ",
+  "description": "เครื่องคำนวณสายไฟฟ้าตาม วสท. 022001-22 โดย Electrical Engineer No.1",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#16324a",
+  "lang": "th"
+}
