@@ -79,6 +79,17 @@ node --test tests/*.test.mjs
 2. ที่ Build and deployment เลือก **Deploy from a branch**
 3. Branch เป็น `main` และโฟลเดอร์เป็น `/ (root)` แล้วกด Save
 
-ไม่ต้องสลับไปใช้ GitHub Actions เป็นตัว deploy เพราะโหมด branch/root เผยแพร่ไฟล์ในรีโพตรง ๆ อยู่แล้ว เวิร์กโฟลว์ในรีโพมีหน้าที่รันเทสต์เท่านั้น
+ไม่ต้องสลับไปใช้ GitHub Actions เป็นตัว deploy ของ Pages เพราะโหมด branch/root เผยแพร่ไฟล์ในรีโพตรง ๆ อยู่แล้ว
+
+## เปิดบน Cloudflare Workers
+
+เวิร์กโฟลว์ `.github/workflows/deploy.yml` รันเทสต์แล้ว deploy ไฟล์เว็บขึ้น Worker ชื่อ `electrical-calculator` ทุกครั้งที่ push เข้า `main` (สั่งรันเองได้ที่แท็บ Actions → Deploy to Cloudflare → Run workflow) ถ้าเทสต์ไม่ผ่านจะไม่ deploy
+
+ตั้งค่าครั้งแรกที่ Settings → Secrets and variables → Actions → New repository secret
+
+1. `CLOUDFLARE_API_TOKEN` — สร้างที่ Cloudflare dashboard → My Profile → API Tokens จากเทมเพลต **Edit Cloudflare Workers**
+2. `CLOUDFLARE_ACCOUNT_ID` — Account ID ในหน้า Workers & Pages ของ dashboard
+
+ไฟล์ที่ขึ้นเว็บกำหนดไว้ในขั้น Stage site files ของเวิร์กโฟลว์ ถ้าเพิ่มไฟล์หรือโฟลเดอร์ใหม่ที่หน้าเว็บต้องใช้ ให้เพิ่มในบรรทัด `cp` ด้วย
 
 เปิดเครื่องคิดเลขพื้นฐานเดิมได้ที่ https://wachirasak-coder.github.io/electrical-calculator/eleccalc/
